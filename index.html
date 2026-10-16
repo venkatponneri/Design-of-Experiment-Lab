@@ -1,0 +1,2207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Catapult DOE Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  color-scheme: light;
+  --bg:#EDF1F4; --surface:#F8FAFB; --canvas:#FBFDFE; --ink:#14213D; --muted:#586A7E;
+  --line:#C9D4DE; --grid:#DDE5EC; --accent:#0B7A75; --accent-ink:#FFFFFF; --accent2:#D9480F;
+  --good:#2B8A3E; --bad:#C92A2A; --warn:#B26A00; --tint:#E3EEF0; --nsig:#9AA9B8;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme: dark;
+    --bg:#0D1620; --surface:#142130; --canvas:#101B28; --ink:#E6EDF5; --muted:#9DB0C4;
+    --line:#2A3C50; --grid:#1D2E40; --accent:#3CC4BC; --accent-ink:#06201F; --accent2:#FF8A4C;
+    --good:#5BD07A; --bad:#FF7A7A; --warn:#F2B14A; --tint:#17303A; --nsig:#5F7388;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme: dark;
+  --bg:#0D1620; --surface:#142130; --canvas:#101B28; --ink:#E6EDF5; --muted:#9DB0C4;
+  --line:#2A3C50; --grid:#1D2E40; --accent:#3CC4BC; --accent-ink:#06201F; --accent2:#FF8A4C;
+  --good:#5BD07A; --bad:#FF7A7A; --warn:#F2B14A; --tint:#17303A; --nsig:#5F7388;
+}
+html{height:100%; scroll-padding-top:calc(env(safe-area-inset-top,0px) + 64px);}
+*,*::before,*::after{box-sizing:inherit}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font-family:"Public Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  font-size:15px; line-height:1.55; font-variant-numeric:tabular-nums;
+}
+body::before{content:""; position:fixed; inset:0 0 auto; height:env(safe-area-inset-top,0px); background:var(--bg); z-index:30;}
+h1,h2,h3{font-family:"Bricolage Grotesque","Public Sans",system-ui,sans-serif; line-height:1.15; margin:0; letter-spacing:-0.01em}
+h1{font-size:clamp(26px,4vw,38px); font-weight:700}
+h2{font-size:clamp(20px,2.6vw,26px); font-weight:700; margin-bottom:6px}
+h3{font-size:17px; font-weight:700; margin:0 0 6px}
+p{margin:0 0 10px; max-width:74ch}
+a{color:var(--accent)}
+.wrap{max-width:1200px; margin:0 auto; padding:0 18px}
+.top{padding:22px 0 14px; border-bottom:1px solid var(--line)}
+.top p{color:var(--muted); margin:6px 0 0}
+.lab{display:flex; flex-wrap:wrap; gap:10px 18px; align-items:flex-end; margin-top:16px}
+.lab label{display:flex; flex-direction:column; font-size:12.5px; color:var(--muted); gap:3px}
+.lab input[type=number], .lab select{width:96px}
+.lab input[type=range]{width:120px}
+.lab .val{color:var(--ink); font-weight:600}
+nav.steps{position:sticky; top:env(safe-area-inset-top,0px); z-index:20; background:var(--bg); border-bottom:1px solid var(--line)}
+nav.steps .wrap{display:flex; gap:4px; overflow-x:auto; scrollbar-width:thin}
+nav.steps button{
+  flex:0 0 auto; background:none; border:0; border-bottom:3px solid transparent; color:var(--muted);
+  padding:12px 14px 9px; font:inherit; font-weight:600; cursor:pointer; display:flex; gap:8px; align-items:center; white-space:nowrap;
+}
+nav.steps button .n{display:inline-grid; place-items:center; width:22px; height:22px; border-radius:50%; border:1.5px solid var(--line); font-size:12px}
+nav.steps button[aria-selected="true"]{color:var(--ink); border-bottom-color:var(--accent)}
+nav.steps button[aria-selected="true"] .n{background:var(--accent); border-color:var(--accent); color:var(--accent-ink)}
+nav.steps button:hover{color:var(--ink)}
+:focus-visible{outline:3px solid var(--accent2); outline-offset:2px}
+main{padding:22px 0 60px}
+section.tab{display:none}
+section.tab.on{display:block}
+.sub{color:var(--muted); max-width:78ch}
+.panel{background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:16px 18px; margin:16px 0}
+.panel.flat{background:none; border:0; border-top:1px solid var(--line); border-radius:0; padding:18px 0 0}
+.cols2{display:grid; grid-template-columns:minmax(0,1.9fr) minmax(280px,1fr); gap:20px; align-items:start}
+.cols3{display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:18px}
+@media (max-width:860px){.cols2{grid-template-columns:1fr}}
+canvas.cat{width:100%; display:block; border:1px solid var(--line); border-radius:6px; background:var(--canvas)}
+.btn{font:inherit; font-weight:600; border:1.5px solid var(--line); background:var(--surface); color:var(--ink); padding:8px 14px; border-radius:6px; cursor:pointer}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent); border-color:var(--accent); color:var(--accent-ink)}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.warn{border-color:var(--accent2); color:var(--accent2)}
+.btn.small{padding:5px 10px; font-size:13px}
+.btn[disabled]{opacity:.45; cursor:not-allowed}
+.row{display:flex; flex-wrap:wrap; gap:8px; align-items:center}
+input[type=number],select,input[type=text]{
+  font:inherit; color:var(--ink); background:var(--canvas); border:1.5px solid var(--line); border-radius:5px; padding:5px 8px;
+}
+input[type=range]{accent-color:var(--accent)}
+.slider{margin:0 0 12px}
+.slider .lbl{display:flex; justify-content:space-between; gap:8px; font-weight:600}
+.slider .lbl span:last-child{color:var(--accent); font-variant-numeric:tabular-nums}
+.slider small{display:block; color:var(--muted); line-height:1.3}
+.slider input{width:100%}
+.kpis{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; margin:10px 0}
+.kpi{border-left:3px solid var(--accent); padding:2px 0 2px 10px}
+.kpi b{display:block; font-size:21px; font-family:"Bricolage Grotesque","Public Sans",sans-serif}
+.kpi span{font-size:12.5px; color:var(--muted)}
+.tblwrap{overflow-x:auto; max-width:100%; border:1px solid var(--line); border-radius:6px; background:var(--canvas)}
+table.t{border-collapse:collapse; width:100%; font-size:13.5px}
+table.t th,table.t td{padding:6px 9px; border-bottom:1px solid var(--grid); text-align:right; white-space:nowrap}
+table.t th:first-child,table.t td:first-child{text-align:left}
+table.t thead th{background:var(--tint); position:sticky; top:0; font-weight:600; border-bottom:1px solid var(--line)}
+table.t tr:last-child td{border-bottom:0}
+table.t td.l0{background:color-mix(in srgb,var(--accent) 8%,transparent)}
+table.t td.l1{background:color-mix(in srgb,var(--warn) 9%,transparent)}
+table.t td.l2{background:color-mix(in srgb,var(--accent2) 10%,transparent)}
+table.t td.l{text-align:left}
+table.t input.yin{width:70px; text-align:right}
+input.yin.bad,input.cin.bad{border-color:var(--bad); box-shadow:0 0 0 3px color-mix(in srgb,var(--bad) 30%,transparent)}
+table.t tr.sig td{font-weight:600}
+table.t tr.pooled td{color:var(--muted)}
+.pill{display:inline-block; padding:1px 8px; border-radius:99px; font-size:12px; font-weight:600; border:1px solid var(--line)}
+.pill.ok{color:var(--good); border-color:var(--good)}
+.pill.no{color:var(--muted)}
+.pill.warn{color:var(--warn); border-color:var(--warn)}
+.pill.bad{color:var(--bad); border-color:var(--bad)}
+.tog{font:inherit; font-weight:600; font-size:13px; padding:5px 10px; border-radius:6px; border:1.5px solid var(--line); background:var(--canvas); color:var(--muted); cursor:pointer; white-space:nowrap}
+.tog:hover{border-color:var(--good)}
+.tog.use{border-color:var(--accent); color:var(--ink)}
+.tog:not(.use):not(.on){border-style:dashed; opacity:.65}
+.tog.on{background:var(--good); border-color:var(--good); color:#fff}
+.lvt input.cur{border-color:var(--good); box-shadow:0 0 0 3px color-mix(in srgb,var(--good) 35%,transparent); font-weight:600}
+.plots{display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:10px}
+.plots svg, svg.wide{width:100%; height:auto; display:block}
+.plots .pl{background:var(--canvas); border:1px solid var(--line); border-radius:6px; padding:4px}
+svg text{fill:var(--ink); font-family:"Public Sans",system-ui,sans-serif}
+svg .ax{fill:var(--muted); font-size:10px}
+svg .pt{font-size:12.5px; font-weight:600}
+svg .lb{font-size:10.5px}
+svg .gl{stroke:var(--grid); stroke-width:1}
+svg .axl{stroke:var(--line); stroke-width:1}
+.lvt{border-collapse:collapse; font-size:14px; width:100%}
+.lvt th,.lvt td{padding:4px 10px 4px 0; text-align:left; font-weight:500; vertical-align:middle}
+.lvt thead th{font-size:12.5px; color:var(--muted)}
+.lvt th[scope="row"]{min-width:210px}
+.cols2>*,.cols3>*{min-width:0}
+select,input[type=text]{max-width:100%}
+.row>label{min-width:0; max-width:100%}
+.lvEditor{min-width:0; max-width:100%}
+.panel{max-width:100%}
+@media (max-width:640px){
+  .lvt th[scope="row"]{min-width:128px; font-size:13px}
+  .lvt td,.lvt th{padding-right:6px}
+  .lvt input[type=number]{width:64px}
+  .tog{padding:4px 8px; font-size:12px}
+  .panel{padding:12px 12px}
+  .kpis{grid-template-columns:repeat(auto-fit,minmax(130px,1fr))}
+}
+.tog[disabled]{cursor:not-allowed}
+.pk{padding:3px 8px; font-size:12px; margin-right:4px}
+table.t tr.rcur td{box-shadow:inset 0 2px 0 var(--good),inset 0 -2px 0 var(--good); font-weight:600}
+.lvt select[disabled],.lvt input[disabled]{opacity:.6; cursor:not-allowed}
+.lvt input[type=number]{width:78px}
+.u{color:var(--muted); font-size:12.5px}
+.note{border-left:3px solid var(--accent2); padding:6px 12px; background:color-mix(in srgb,var(--accent2) 7%,transparent); margin:10px 0; max-width:80ch}
+.note.info{border-left-color:var(--accent); background:color-mix(in srgb,var(--accent) 7%,transparent)}
+ul.clean{margin:6px 0 10px; padding-left:20px}
+ul.clean li{margin:4px 0; max-width:82ch}
+dl.gloss{display:grid; grid-template-columns:max-content 1fr; gap:6px 16px; margin:8px 0}
+dl.gloss dt{font-weight:600}
+dl.gloss dd{margin:0; max-width:70ch}
+.formula{background:var(--tint); border-radius:5px; padding:6px 10px; margin:6px 0 10px; display:block; max-width:80ch}
+#toast{position:fixed; left:50%; bottom:calc(18px + env(safe-area-inset-bottom,0px)); transform:translateX(-50%); background:var(--ink); color:var(--bg); padding:8px 14px; border-radius:6px; font-weight:500; opacity:0; pointer-events:none; transition:opacity .2s; z-index:40; max-width:90vw}
+#toast.on{opacity:1}
+.stat{display:flex; flex-wrap:wrap; gap:6px 18px; margin:8px 0; font-size:14px}
+.stat b{font-weight:600}
+.big{font-size:19px; font-weight:700; font-family:"Bricolage Grotesque","Public Sans",sans-serif; line-height:1.3}
+.cin{width:62px; text-align:right}
+.seg{display:inline-flex; flex-wrap:wrap; border:1.5px solid var(--line); border-radius:6px; overflow:hidden}
+.seg button{border:0; background:var(--surface); color:var(--muted); font:inherit; font-weight:600; padding:6px 12px; cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--accent); color:var(--accent-ink)}
+details{margin:8px 0}
+details summary{cursor:pointer; font-weight:600}
+.cmp td,.cmp th{white-space:normal !important; vertical-align:top}
+@media (prefers-reduced-motion: reduce){ #toast{transition:none} }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <h1>Catapult DOE Lab</h1>
+    <p>Choose 2 to 8 factors with 1 to 3 levels each, run a factorial (full or fractional) and a Taguchi orthogonal array on the same catapult, then confirm which setting you can trust.</p>
+    <div class="lab" role="group" aria-label="Lab controls">
+      <label>Target distance (m)<input type="number" id="cTarget" value="3.00" min="1" max="6" step="0.05"></label>
+      <label>Tolerance ± (m)<input type="number" id="cTol" value="0.25" min="0.05" max="1" step="0.05"></label>
+      <label>Launch noise <span class="val" id="cNoiseV">1.0×</span><input type="range" id="cNoise" min="0" max="2" step="0.1" value="1"></label>
+      <label>Significance α<select id="cAlpha"><option value="0.01">0.01</option><option value="0.05" selected>0.05</option><option value="0.10">0.10</option></select></label>
+      <label>Required hit rate<select id="cHit" title="Share of the 10 confirmation shots that must land inside the tolerance band"><option value="0.7">70%</option><option value="0.8" selected>80%</option><option value="0.9">90%</option><option value="1">100%</option></select></label>
+      <label>Random seed<input type="number" id="cSeed" value="20261016" step="1"></label>
+      <button class="btn small" data-act="reseed" title="Give this team a different random sequence">New seed</button>
+    </div>
+  </div>
+</header>
+
+<nav class="steps" aria-label="Lesson steps">
+  <div class="wrap" role="tablist">
+    <button role="tab" data-act="tab" data-tab="learn" aria-selected="true"><span class="n">1</span>Learn</button>
+    <button role="tab" data-act="tab" data-tab="play" aria-selected="false"><span class="n">2</span>Play</button>
+    <button role="tab" data-act="tab" data-tab="fact" aria-selected="false"><span class="n">3</span>Factorial DOE</button>
+    <button role="tab" data-act="tab" data-tab="tag" aria-selected="false"><span class="n">4</span>Taguchi array</button>
+    <button role="tab" data-act="tab" data-tab="cmp" aria-selected="false"><span class="n">5</span>Compare and decide</button>
+  </div>
+</nav>
+
+<main class="wrap">
+
+<!-- ================= LEARN ================= -->
+<section class="tab on" id="tab-learn">
+  <h2>Why run a designed experiment?</h2>
+  <p class="sub">Changing one factor at a time (OFAT) is slow and blind to interactions. A designed experiment changes several factors together in a planned pattern, so every shot tells you about every factor.</p>
+
+  <div class="cols3">
+    <div class="panel">
+      <h3>Factorial: full or fractional</h3>
+      <p>A full factorial runs every combination of every level: 4 factors at 2 levels need 16 runs, but 8 factors at 3 levels would need 6,561. So the lab switches to a <em>fractional factorial</em> as the run count grows: a carefully chosen fraction (81 runs for eight 3-level factors) that keeps the main effects, and as many interactions as it can, separable.</p>
+      <p>The price of a fraction is aliasing: some effects share a column and cannot be told apart. The resolution (III, IV, V) says which. Small designs stay full, and you can force a full factorial up to 256 runs.</p>
+    </div>
+    <div class="panel">
+      <h3>Taguchi orthogonal array</h3>
+      <p>A small, balanced subset of the full factorial. The lab picks the smallest standard array that fits your factors: L4, L8, L9, L12, L16, L18 or L27.</p>
+      <p>Each run gets a signal-to-noise (S/N) ratio that rewards a setting that is on target <em>and</em> repeatable. Spare columns in the array act as the error estimate. Arrays here estimate main effects only; use the factorial to see interactions. If a mixed 2- and 3-level design would put a two-level factor in a three-level column, the Taguchi tab warns that it is unbalanced and offers an exactly balanced (larger) array.</p>
+    </div>
+    <div class="panel">
+      <h3>Confirmation run</h3>
+      <p>Every model is a prediction. Fire 10 more shots at the recommended setting. The lab reports three separate checks: how close the observed mean is to the predicted mean, an approximate statistical test of that gap, and whether enough shots landed in the tolerance band. Adopt the setting only if the practical check passes.</p>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h3>The eight catapult factors</h3>
+    <p class="u">Pick how many to use (2 to 8) on the Factorial or Taguchi tab. In the experiments, factors you do not use stay fixed at their baseline; the Play tab always shows all eight.</p>
+    <div class="tblwrap"><table class="t cmp">
+      <thead><tr><th>Factor</th><th>Levels you can use</th><th style="text-align:left">What it does</th></tr></thead>
+      <tbody>
+        <tr><td><b>A</b> Pull-back angle</td><td>any value, 30° to 70°</td><td class="l">How far the arm is pulled back. Stored energy grows with the square of the angle: a strong driver of distance.</td></tr>
+        <tr><td><b>B</b> Stop-pin angle</td><td>any value, 10° to 50°</td><td class="l">The angle the ball leaves the arm. Distance peaks near 45°.</td></tr>
+        <tr><td><b>C</b> Band hook position</td><td>inner, middle, outer</td><td class="l">Outer hook is a stiffer band: more energy, but more shot-to-shot scatter.</td></tr>
+        <tr><td><b>D</b> Ball mass</td><td>10, 15, 20 g</td><td class="l">A heavier ball leaves slower. A light ball also scatters more.</td></tr>
+        <tr><td><b>E</b> Number of rubber bands</td><td>1, 2, 3</td><td class="l">More bands add energy and make each shot more repeatable.</td></tr>
+        <tr><td><b>F</b> Pivot height</td><td>any value, 10 to 50 cm</td><td class="l">Raises the release point. A small effect on distance.</td></tr>
+        <tr><td><b>G</b> Stop-pin play</td><td>any value, 0 to 6 mm</td><td class="l">Looseness of the stop pin. It does not change the average, only the scatter: a pure variation factor.</td></tr>
+        <tr><td><b>H</b> Ball diameter</td><td>any value, 15 to 50 mm</td><td class="l">A bigger ball meets more air drag and lands a little shorter.</td></tr>
+      </tbody></table></div>
+    <p class="u" style="margin-top:8px">Because the physics multiplies these factors (distance ∝ θ² · stiffness · sin 2α / mass), the factors <em>interact</em>: the benefit of a bigger pull-back depends on the ball mass, the hook and the bands. That is exactly what an OFAT trial cannot see.</p>
+  </div>
+
+  <div class="cols2">
+    <div>
+      <h3>Terms and formulas</h3>
+      <dl class="gloss">
+        <dt>Factor, level</dt><dd>A setting you control, and the values you test it at. A factor with 1 level is held constant; with 2 or 3 levels it is varied.</dd>
+        <dt>Run, replicate</dt><dd>One combination of levels; replicates are repeat shots at the same combination. Replicates measure the noise.</dd>
+        <dt>Main effect</dt><dd>How the average response changes as a factor moves through its levels.</dd>
+        <dt>Interaction</dt><dd>The effect of one factor changes depending on the level of another. On a plot, the lines are not parallel.</dd>
+        <dt>% contribution</dt><dd>Share of the total variation explained by a term (SS term ÷ SS total).</dd>
+        <dt>S/N ratio</dt><dd>Taguchi's score per run. Higher is always better.</dd>
+        <dt>Adjustment factor</dt><dd>A factor that moves the mean but barely changes the S/N. Use it to land on target.</dd>
+      </dl>
+      <span class="formula"><b>Main effect (2 levels)</b> = mean(response at high) − mean(response at low)</span>
+      <span class="formula"><b>S/N, nominal-is-best</b> = 10·log₁₀( ȳ² / s² ) &nbsp;|&nbsp; <b>larger-is-better</b> = −10·log₁₀( mean(1/y²) ) &nbsp;|&nbsp; <b>smaller-is-better</b> = −10·log₁₀( mean(y²) ) &nbsp;|&nbsp; <b>hit-the-target (MSD)</b> = −10·log₁₀( mean((y − T)²) )</span>
+    </div>
+    <div class="panel">
+      <h3>Which factorial design will I get?</h3>
+      <div class="tblwrap"><table class="t cmp">
+        <thead><tr><th>Varied factors</th><th>Design</th><th>Runs</th><th>Resolution</th></tr></thead>
+        <tbody>
+          <tr><td>2 to 4 factors, 2 levels</td><td>Full factorial</td><td>4 to 16</td><td>full</td></tr>
+          <tr><td>5 factors, 2 levels</td><td>2^(5-1)</td><td>16</td><td>V</td></tr>
+          <tr><td>6 factors, 2 levels</td><td>2^(6-1)</td><td>32</td><td>VI</td></tr>
+          <tr><td>7 factors, 2 levels</td><td>2^(7-1)</td><td>64</td><td>VII</td></tr>
+          <tr><td>8 factors, 2 levels</td><td>2^(8-2)</td><td>64</td><td>V</td></tr>
+          <tr><td>2 to 3 factors, 3 levels</td><td>Full factorial</td><td>9 to 27</td><td>full</td></tr>
+          <tr><td>4 factors, 3 levels</td><td>3^(4-1)</td><td>27</td><td>IV</td></tr>
+          <tr><td>5 factors, 3 levels</td><td>3^(5-1)</td><td>81</td><td>V</td></tr>
+          <tr><td>6 to 8 factors, 3 levels</td><td>3^(6-2), 3^(7-3), 3^(8-4)</td><td>81</td><td>IV</td></tr>
+          <tr><td>mixed 2- and 3-level</td><td>2-level and 3-level fractions crossed</td><td>6 to 108</td><td>full, III, IV or V</td></tr>
+        </tbody></table></div>
+      <p class="u" style="margin-top:6px">Resolution V: main effects and two-factor interactions are all separable. IV: main effects are clear, two-factor interactions are aliased with each other. III: main effects are aliased with two-factor interactions.</p>
+      <h3 style="margin-top:12px">Which array will I get?</h3>
+      <p class="u">The lab always picks the smallest standard array whose columns fit; the Taguchi tab shows why.</p>
+      <div class="tblwrap"><table class="t cmp">
+        <thead><tr><th>Your varied factors</th><th>Array</th></tr></thead>
+        <tbody>
+          <tr><td>up to 3 factors, all 2 levels</td><td>L4 (4 runs)</td></tr>
+          <tr><td>4 to 7 factors, all 2 levels</td><td>L8 (8 runs)</td></tr>
+          <tr><td>8 factors, all 2 levels</td><td>L12 (12 runs)</td></tr>
+          <tr><td>up to 4 factors, any 3-level</td><td>L9 (9 runs)</td></tr>
+          <tr><td>5 to 8 factors, any 3-level</td><td>L18 (18 runs)</td></tr>
+          <tr><td>8 factors, all 3 levels</td><td>L27 (27 runs)</td></tr>
+        </tbody></table></div>
+      <h3 style="margin-top:12px">Suggested 90-minute session</h3>
+      <ol class="clean">
+        <li><b>Play (10 min).</b> Tune the catapult by feel to hit the target. Count shots used.</li>
+        <li><b>Factorial (30 min).</b> Run every combination. Read Pareto, main effects, then interactions.</li>
+        <li><b>Taguchi (25 min).</b> Run the array. Read the S/N response table and factor roles.</li>
+        <li><b>Confirm (10 min).</b> Ten shots at each recommended setting.</li>
+        <li><b>Decide (15 min).</b> Compare cost, accuracy and repeatability. Reveal the hidden physics last.</li>
+      </ol>
+      <p class="u">Using a real catapult? Every response cell accepts typed values, so students can enter their own measured distances instead of simulated ones.</p>
+    </div>
+  </div>
+  <div class="panel">
+    <h3>Built-in self-test</h3>
+    <p class="u">Runs known-answer checks (reference values computed independently) on the statistics and design code, in your own browser. It does not touch your settings or data. Release <b id="relId"></b>.</p>
+    <button class="btn" data-act="selftest">Run self-test</button>
+    <div id="selfTestOut" style="margin-top:10px"></div>
+  </div>
+  <div class="row" style="margin-top:8px"><button class="btn primary" data-act="tab" data-tab="play">Start with the catapult</button></div>
+</section>
+
+<!-- ================= PLAY ================= -->
+<section class="tab" id="tab-play">
+  <h2>Play with the catapult</h2>
+  <p class="sub">Slide the continuous factors, pick a position for the discrete ones, fire, and watch where shots land. The shaded band is the target zone. All eight factors are always available here, independent of how many you use in the experiments.</p>
+  <div class="cols2">
+    <div>
+      <canvas class="cat" id="cvPlay" aria-label="Catapult side view with landing marks"></canvas>
+      <div class="stat" id="playStats"></div>
+      <div class="row">
+        <button class="btn primary" data-act="play-fire">Fire</button>
+        <button class="btn" data-act="play-fire10">Fire 10 shots</button>
+        <button class="btn" data-act="play-clear">Clear chart</button>
+      </div>
+    </div>
+    <div class="panel" style="margin-top:0">
+      <h3>Factors</h3>
+      <div id="playSliders"></div>
+      <label class="row" style="margin-top:6px"><input type="checkbox" id="trainerPlay"> <span><b>Trainer view</b>: show the hidden physics</span></label>
+      <div id="playTrainer" class="u" style="margin-top:6px"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= FACTORIAL ================= -->
+<section class="tab" id="tab-fact">
+  <h2>Factorial DOE</h2>
+  <p class="sub">Small experiments run every combination. As the run count grows, the lab switches to a fractional factorial automatically. Fire the shots, then read the effects.</p>
+  <div class="panel">
+    <div class="cols2" style="grid-template-columns:1fr">
+      <div>
+        <h3>Factors and levels</h3>
+        <div class="lvEditor" data-t="fact"></div>
+        <p class="u">Levels = 3: all three positions are used. Levels = 2 (C, D, E): choose which two by clicking a dashed position to swap it in; that choice locks once shots are recorded. Then click between the chosen levels to set the run: green shows the level the run uses, the matching table row is highlighted, and Fire shoots that run. Levels = 1 holds the factor constant. Any change to factors or levels clears the recorded shots.</p>
+      </div>
+      <div>
+        <h3>Plan</h3>
+        <div class="row" style="margin-bottom:8px">
+          <label>Replicates per run
+            <select id="factR"><option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option></select>
+          </label>
+          <label class="row"><input type="checkbox" id="factRand"> Randomize run order</label>
+          <button class="btn small" data-act="fact-shuffle">Re-randomize</button>
+        </div>
+        <div class="row" style="margin-bottom:8px">
+          <label>Design
+            <select id="factDesign"><option value="auto" selected>Auto (full when small)</option><option value="full">Force full factorial</option></select>
+          </label>
+        </div>
+        <div class="stat" id="factPlan"></div>
+        <p class="u" id="factWhy"></p>
+        <p class="u">With 1 replicate there is no pure error, so the analysis pools the unmodelled higher-order terms instead.</p>
+      </div>
+    </div>
+  </div>
+  <canvas class="cat" id="cvFact" aria-label="Catapult for the factorial runs"></canvas>
+  <div class="row" style="margin:10px 0">
+    <button class="btn primary" data-act="fact-next">Fire next shot (animated)</button>
+    <button class="btn" data-act="fact-all">Run all remaining (instant)</button>
+    <button class="btn warn" data-act="fact-clear">Clear data</button>
+    <span class="u" id="factProg"></span>
+  </div>
+  <div class="tblwrap"><div id="factTable"></div></div>
+  <div id="factResults"></div>
+</section>
+
+<!-- ================= TAGUCHI ================= -->
+<section class="tab" id="tab-tag">
+  <h2>Taguchi orthogonal array</h2>
+  <p class="sub">A balanced subset of the combinations. The lab chooses the smallest standard array that fits your factors and levels.</p>
+  <div class="panel">
+    <div class="cols2" style="grid-template-columns:1fr">
+      <div>
+        <h3>Factors and levels</h3>
+        <div class="lvEditor" data-t="tag"></div>
+        <p class="u">Same factors and levels as the factorial. Any change clears both experiments.</p>
+      </div>
+      <div>
+        <h3>Plan</h3>
+        <div class="row" style="margin-bottom:8px">
+          <label>Replicates per run (noise)
+            <select id="tagR"><option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option></select>
+          </label>
+          <label>Quality characteristic
+            <select id="tagType">
+              <option value="ntb" selected>Nominal is best: 10·log(ȳ²/s²)</option>
+              <option value="msd">Hit the target: −10·log(MSD)</option>
+              <option value="ltb">Larger is better</option>
+              <option value="stb">Smaller is better</option>
+            </select>
+          </label>
+        </div>
+        <div class="row">
+          <label class="row"><input type="checkbox" id="tagRand"> Randomize run order</label>
+          <button class="btn small" data-act="tag-shuffle">Re-randomize</button>
+        </div>
+        <div class="row" style="margin-bottom:8px">
+          <label>Mixed-level balance
+            <select id="tagBal"><option value="small" selected>Smallest array</option><option value="balanced">Exactly balanced (larger)</option></select>
+          </label>
+        </div>
+        <div class="stat" id="tagPlan"></div>
+        <p class="u" id="tagWhy"></p>
+        <p class="u" id="tagWarn" style="color:var(--accent2)"></p>
+        <p class="u">Nominal-is-best needs at least 2 replicates, because it uses the spread s.</p>
+      </div>
+    </div>
+  </div>
+  <canvas class="cat" id="cvTag" aria-label="Catapult for the Taguchi runs"></canvas>
+  <div class="row" style="margin:10px 0">
+    <button class="btn primary" data-act="tag-next">Fire next shot (animated)</button>
+    <button class="btn" data-act="tag-all">Run all remaining (instant)</button>
+    <button class="btn warn" data-act="tag-clear">Clear data</button>
+    <span class="u" id="tagProg"></span>
+  </div>
+  <div class="tblwrap"><div id="tagTable"></div></div>
+  <div id="tagResults"></div>
+</section>
+
+<!-- ================= COMPARE ================= -->
+<section class="tab" id="tab-cmp">
+  <h2>Compare and decide</h2>
+  <p class="sub">Two methods, one catapult. Which setting would you put into the work instruction?</p>
+  <div id="cmpBody"></div>
+  <label class="row" style="margin-top:14px"><input type="checkbox" id="trainerCmp"> <span><b>Trainer view</b>: reveal the true behaviour of the tested settings</span></label>
+  <div id="cmpTrainer"></div>
+</section>
+
+</main>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+'use strict';
+/* =====================================================================
+   Math helpers
+===================================================================== */
+const mean=a=>a.reduce((s,v)=>s+v,0)/a.length;
+const sd=a=>{ if(a.length<2) return 0; const m=mean(a); return Math.sqrt(a.reduce((s,v)=>s+(v-m)*(v-m),0)/(a.length-1)); };
+const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
+const popcount=x=>{let c=0; while(x){c+=x&1; x>>=1;} return c;};
+
+function lgamma(x){
+  const c=[76.18009172947146,-86.50532032941677,24.01409824083091,-1.231739572450155,0.1208650973866179e-2,-0.5395239384953e-5];
+  let y=x, tmp=x+5.5; tmp-=(x+0.5)*Math.log(tmp);
+  let ser=1.000000000190015;
+  for(let j=0;j<6;j++){ y+=1; ser+=c[j]/y; }
+  return -tmp+Math.log(2.5066282746310005*ser/x);
+}
+function betacf(a,b,x){
+  const MAXIT=300, EPS=3e-12, FPMIN=1e-300;
+  const qab=a+b, qap=a+1, qam=a-1;
+  let c=1, d=1-qab*x/qap;
+  if(Math.abs(d)<FPMIN) d=FPMIN;
+  d=1/d; let h=d;
+  for(let m=1;m<=MAXIT;m++){
+    const m2=2*m;
+    let aa=m*(b-m)*x/((qam+m2)*(a+m2));
+    d=1+aa*d; if(Math.abs(d)<FPMIN) d=FPMIN;
+    c=1+aa/c; if(Math.abs(c)<FPMIN) c=FPMIN;
+    d=1/d; h*=d*c;
+    aa=-(a+m)*(qab+m)*x/((a+m2)*(qap+m2));
+    d=1+aa*d; if(Math.abs(d)<FPMIN) d=FPMIN;
+    c=1+aa/c; if(Math.abs(c)<FPMIN) c=FPMIN;
+    d=1/d;
+    const del=d*c; h*=del;
+    if(Math.abs(del-1)<EPS) break;
+  }
+  return h;
+}
+function ibeta(x,a,b){
+  if(x<=0) return 0; if(x>=1) return 1;
+  const bt=Math.exp(lgamma(a+b)-lgamma(a)-lgamma(b)+a*Math.log(x)+b*Math.log(1-x));
+  if(x<(a+1)/(a+b+2)) return bt*betacf(a,b,x)/a;
+  return 1-bt*betacf(b,a,1-x)/b;
+}
+function pF(F,d1,d2){ if(!(F>0)) return 1; if(!isFinite(F)) return 0; return ibeta(d2/(d2+d1*F), d2/2, d1/2); }
+/* two-sided t critical value (df may be fractional) */
+/* upper tail of the chi-square distribution (regularised upper incomplete gamma Q(df/2, x/2)) */
+function chiSqSf(x,df){
+  if(!(x>0)) return 1; const a=df/2, xx=x/2;
+  if(xx<a+1){ let sum=1/a, term=1/a, n=a; for(let i=0;i<500;i++){ n+=1; term*=xx/n; sum+=term; if(Math.abs(term)<Math.abs(sum)*1e-14) break; } return 1-sum*Math.exp(-xx+a*Math.log(xx)-lgamma(a)); }
+  let b=xx+1-a, c=1/1e-300, d=1/b, h=d;
+  for(let i=1;i<=500;i++){ const an2=-i*(i-a); b+=2; d=an2*d+b; if(Math.abs(d)<1e-300) d=1e-300; c=b+an2/c; if(Math.abs(c)<1e-300) c=1e-300; d=1/d; const del=d*c; h*=del; if(Math.abs(del-1)<1e-14) break; }
+  return Math.exp(-xx+a*Math.log(xx)-lgamma(a))*h;
+}
+/* Bartlett's test that the run variances are equal (equal replicate counts); null when it cannot be computed */
+function bartlett(groups){
+  const k=groups.length, ni=groups[0].length; if(k<2||ni<2) return null;
+  const s2=groups.map(g=>{ const m=mean(g); return g.reduce((s,v)=>s+(v-m)*(v-m),0)/(ni-1); });
+  if(s2.some(v=>!(v>0))) return null;
+  const N=k*ni, sp=s2.reduce((a,b)=>a+b,0)/k;
+  const num=(N-k)*Math.log(sp)-(ni-1)*s2.reduce((a,v)=>a+Math.log(v),0);
+  const C=1+(1/(3*(k-1)))*(k/(ni-1)-1/(N-k));
+  const stat=num/C; return {stat,df:k-1,p:chiSqSf(stat,k-1)};
+}
+function tCrit(df,alpha){ let lo=0, hi=200; for(let i=0;i<90;i++){ const mid=(lo+hi)/2; if(pF(mid*mid,1,df)>alpha) lo=mid; else hi=mid; } return (lo+hi)/2; }
+
+function makeRng(seed){
+  let a=seed>>>0;
+  return function(){
+    a=(a+0x6D2B79F5)>>>0; let t=a;
+    t=Math.imul(t^(t>>>15),t|1); t^=t+Math.imul(t^(t>>>7),t|61);
+    return ((t^(t>>>14))>>>0)/4294967296;
+  };
+}
+function randn(rnd){ let u=0; while(u===0) u=rnd(); const v=rnd(); return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v); }
+
+/* =====================================================================
+   Factors and the hidden physics
+===================================================================== */
+const G=9.81, ARM_L=0.45, K_ENERGY=350;
+const FALL=['A','B','C','D','E','F','G','H'];
+const DEF={
+  A:{name:'Pull-back angle',unit:'°',type:'cont',opts:[30,45,60],min:30,max:70,step:1,base:45,hint:'Arm pulled back this far. Energy grows with the square of the angle.'},
+  B:{name:'Stop-pin angle',unit:'°',type:'cont',opts:[20,32,45],min:10,max:50,step:1,base:32,hint:'Angle the ball leaves the arm. Longest range near 45°.'},
+  C:{name:'Band hook position',unit:'',type:'disc',opts:[1,1.5,2],labels:['Inner hook','Middle hook','Outer hook'],base:1.5,hint:'Outer hook = stiffer band: more energy, more scatter.'},
+  D:{name:'Ball mass',unit:' g',type:'disc',opts:[10,15,20],labels:['10 g','15 g','20 g'],base:15,hint:'A heavier ball leaves slower. A light ball scatters more.'},
+  E:{name:'Number of rubber bands',unit:'',type:'disc',opts:[1,2,3],labels:['1 band','2 bands','3 bands'],base:1,hint:'More bands: more energy and a steadier shot.'},
+  F:{name:'Pivot height',unit:' cm',type:'cont',opts:[15,25,40],min:10,max:50,step:1,base:25,hint:'Height of the arm pivot above the table.'},
+  G:{name:'Stop-pin play',unit:' mm',type:'cont',opts:[0,2,4],min:0,max:6,step:0.5,base:2,hint:'Looseness of the stop pin. Adds scatter, not distance.'},
+  H:{name:'Ball diameter',unit:' mm',type:'cont',opts:[20,30,40],min:15,max:50,step:1,base:30,hint:'A bigger ball meets more air drag.'}
+};
+const MAXRUNS=256;
+
+const S={
+  target:3.0, tol:0.25, noise:1, seed:20261016, alpha:0.05, hitReq:0.8, trainer:false, nf:4,
+  lv:{A:[30,60],B:[20,45],C:[1,2],D:[10,20],E:[1,3],F:[15,40],G:[0,4],H:[20,40]},
+  play:{p:{},shots:[]},
+  fact:{r:3,rand:false,order:null,y:[],view:'mean',goal:'target',err:'auto',design:'auto',conf:[],rec:null,fd:null,tooBig:false},
+  tag:{r:3,rand:false,order:null,y:[],type:'ntb',pool:'auto',balance:'small',conf:[],rec:null,design:null}
+};
+FALL.forEach(k=>{ S.play.p[k]=DEF[k].base; });
+let rng=makeRng(S.seed);
+
+const AK=()=>FALL.slice(0,S.nf);
+const VK=()=>AK().filter(k=>S.lv[k].length>=2);
+function fixedVals(){ const o={}; AK().forEach(k=>{ if(S.lv[k].length===1) o[k]=S.lv[k][0]; }); return o; }
+function fullParams(set){ const o={}; FALL.forEach(k=>{ o[k]=DEF[k].base; }); Object.assign(o,fixedVals(),set||{}); return o; }
+
+function trueModel(p){
+  const th=p.A*Math.PI/180, al=p.B*Math.PI/180;
+  const kappa=(0.4+0.6*p.C)*(0.6+0.4*p.E);
+  const v=Math.sqrt(K_ENERGY*kappa*th*th/p.D);
+  const cv=(0.02+0.025*clamp(p.C-1,0,1)+0.015*clamp((20-p.D)/10,0,1.5)+0.01*clamp((p.A-30)/30,0,1.5))/(1+0.2*(p.E-1));
+  const sa=(0.4+0.2*p.G)*Math.PI/180;
+  const drag=0.012*Math.pow(p.H/30,2);
+  return {v,al,cv,sa,drag,h:p.F/100};
+}
+function flight(v,al,h,drag){
+  const h0=h+ARM_L*Math.cos(al), xr=-ARM_L*Math.sin(al);
+  const vy=v*Math.sin(al), vx0=v*Math.cos(al);
+  const t=(vy+Math.sqrt(vy*vy+2*G*h0))/G;
+  const dx=vx0*t, eff=dx/(1+(drag||0)*dx);
+  return {h0,xr,vx:eff/t,vy,t,range:xr+eff};
+}
+function shotWith(p,rnd,noise){
+  const m=trueModel(p);
+  const ZMAX=3.5, z1=clamp(randn(rnd),-ZMAX,ZMAX), z2=clamp(randn(rnd),-ZMAX,ZMAX), z3=clamp(randn(rnd),-ZMAX,ZMAX);   /* noise truncated at 3.5 sigma */
+  const v=Math.max(0.1,m.v*(1+m.cv*noise*z1));
+  const al=m.al+m.sa*noise*z2;
+  const f=flight(v,al,m.h,m.drag);
+  return {dist:Math.max(0.01,f.range+0.015*noise*z3), flight:f};   /* a ball that lands at the base is recorded as 1 cm */
+}
+function shotAt(p){ return shotWith(p,rng,S.noise); }
+function mcStats(p,n,seed,noise){
+  const r=makeRng(seed), ys=[]; let hit=0;
+  for(let i=0;i<n;i++){ const d=shotWith(p,r,noise).dist; ys.push(d); if(Math.abs(d-S.target)<=S.tol) hit++; }
+  return {mean:mean(ys), sd:sd(ys), hit:hit/n};
+}
+
+/* =====================================================================
+   Formatting helpers
+===================================================================== */
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmt=(x,d=2)=>(x==null||!isFinite(x))?'–':Number(x).toFixed(d);
+const fmtP=p=>(p==null||isNaN(p))?'–':(p<0.001?'<0.001':p.toFixed(3));
+const signed=(x,d=3)=>(x>=0?'+':'−')+Math.abs(x).toFixed(d);
+function fmtVal(k,v){
+  v=Number(v);
+  if(k==='C') return (v<=1.25?'Inner ':(v>=1.75?'Outer ':'Middle '))+v.toFixed(2);
+  if(k==='E') return v+(v===1?' band':' bands');
+  return (Math.round(v*100)/100)+(DEF[k].unit||'');
+}
+function settingText(vals){ return AK().map(k=>k+' '+fmtVal(k,vals[k])).join(' · '); }
+function toast(msg){
+  const t=document.getElementById('toast'); if(!t) return; t.textContent=msg; t.classList.add('on');
+  clearTimeout(toast._h); toast._h=setTimeout(()=>t.classList.remove('on'),2800);
+}
+const roundVal=(k,v)=>DEF[k].type==='cont'?Math.round(v*10)/10:v;
+
+/* =====================================================================
+   Full factorial design and analysis (any mix of 2- and 3-level factors)
+===================================================================== */
+function digitsOf(run,ns){ const d=[]; let x=run; ns.forEach(n=>{ d.push(x%n); x=Math.floor(x/n); }); return d; }
+function factDesign(){ return buildFactDesign(); }
+function termNameOf(mask,keys){ return keys.filter((k,i)=>(mask>>i)&1).join('×'); }
+function submasks(m,fn){ let s=m; for(;;){ fn(s); if(s===0) break; s=(s-1)&m; } }
+
+function analyzeFull(Y,ns,keys,alpha,errPref,digsIn){
+  const k=ns.length, R=Y.length, r=Y[0].length;
+  const stride=[]; ns.reduce((acc,n,i)=>{ stride[i]=acc; return acc*n; },1);
+  const rm=Y.map(a=>mean(a)), grand=mean(rm);
+  let ssTot=0, ssPure=0;
+  Y.forEach((a,i)=>a.forEach(v=>{ ssTot+=(v-grand)*(v-grand); ssPure+=(v-rm[i])*(v-rm[i]); }));
+  const digs=digsIn||Y.map((_,i)=>digitsOf(i,ns));
+  const nm=1<<k, B=new Array(nm).fill(0), marg=new Array(nm);
+  for(let m=1;m<nm;m++){
+    const sum=new Map(), cnt=new Map();
+    for(let i=0;i<R;i++){
+      let key=0; for(let f=0;f<k;f++) if((m>>f)&1) key+=digs[i][f]*stride[f];
+      sum.set(key,(sum.get(key)||0)+rm[i]); cnt.set(key,(cnt.get(key)||0)+1);
+    }
+    const mm=new Map(); let b=0;
+    sum.forEach((s,key)=>{ const c=cnt.get(key), mv=s/c; mm.set(key,mv); b+=c*r*(mv-grand)*(mv-grand); });
+    marg[m]=mm; B[m]=b;
+  }
+  const terms=[];
+  for(let m=1;m<nm;m++){
+    let ss=0; const pm=popcount(m);
+    submasks(m,s=>{ if(s>0) ss+=(((pm-popcount(s))%2)?-1:1)*B[s]; });
+    let df=1; for(let f=0;f<k;f++) if((m>>f)&1) df*=ns[f]-1;
+    const t={mask:m,name:termNameOf(m,keys),order:pm,df,ss:Math.max(0,ss),effect:null,coef:null};
+    let all2=true; for(let f=0;f<k;f++) if(((m>>f)&1)&&ns[f]!==2) all2=false;
+    if(all2){
+      let c=0; for(let i=0;i<R;i++){ let sg=1; for(let f=0;f<k;f++) if((m>>f)&1) sg*=digs[i][f]?1:-1; c+=sg*rm[i]; }
+      t.effect=c/(R/2); t.coef=t.effect/2;
+    }
+    terms.push(t);
+  }
+  let mode=errPref;
+  if(mode==='auto') mode=r>=2?'pure':'pool3';
+  if(mode==='pure'&&r<2) mode='pool3';
+  let ssE=0, dfE=0; const pooled=new Set();
+  if(r>=2){ ssE=ssPure; dfE=R*(r-1); }
+  if(mode==='pool3'){ terms.forEach(t=>{ if(t.order>=3){ ssE+=t.ss; dfE+=t.df; pooled.add(t.mask); } }); }
+  const noErr=dfE===0, mse=dfE>0?ssE/dfE:0;
+  terms.forEach(t=>{
+    t.pooled=pooled.has(t.mask);
+    t.pct=ssTot>0?100*t.ss/ssTot:0;
+    t.ms=t.ss/t.df;
+    if(t.pooled){ t.F=null; t.p=null; t.sig=false; return; }
+    if(noErr){ t.F=null; t.p=null; t.sig=t.pct>=5; return; }
+    if(mse>1e-14){ t.F=t.ms/mse; t.p=pF(t.F,t.df,dfE); } else { t.F=Infinity; t.p=t.ss>1e-14?0:1; }
+    t.sig=t.p<alpha;
+  });
+  const ssModel=terms.filter(t=>t.sig).reduce((s,t)=>s+t.ss,0);
+  return {r,R,k,keys,ns,stride,digs,grand,rm,marg,terms,ssTot,ssPure,ssE,dfE,mse,mode:noErr?'none':mode,noErr,
+          r2:ssTot>0?ssModel/ssTot:0, sigma:(r>=2)?Math.sqrt(ssPure/(R*(r-1))):null};
+}
+function levelMeansOf(an,f){ const o=[]; for(let l=0;l<an.ns[f];l++) o.push(an.marg[1<<f].get(l*an.stride[f])); return o; }
+function cellMeansOf(an,f,g){
+  const m=an.marg[(1<<f)|(1<<g)], o=[];
+  for(let a=0;a<an.ns[f];a++){ const row=[]; for(let b=0;b<an.ns[g];b++) row.push(m.get(a*an.stride[f]+b*an.stride[g])); o.push(row); }
+  return o;
+}
+function termEffectAt(an,mask,d){
+  let sum=0; const pm=popcount(mask);
+  submasks(mask,s=>{
+    let v;
+    if(s===0) v=an.grand;
+    else { let key=0; for(let f=0;f<an.k;f++) if((s>>f)&1) key+=d[f]*an.stride[f]; v=an.marg[s].get(key); }
+    sum+=(((pm-popcount(s))%2)?-1:1)*v;
+  });
+  return sum;
+}
+function predictFull(an,d){
+  if(an.predictFn) return an.predictFn(d);
+  let y=an.grand;
+  an.terms.forEach(t=>{ if(t.sig) y+=termEffectAt(an,t.mask,d); });
+  return y;
+}
+function searchFact(anM,anL,goal,T,tolHalf){
+  let cells=allCells(anM.ns); if(anM.estimableFn){ const ok=cells.filter(d=>anM.estimableFn(d)); if(ok.length) cells=ok; }
+  const out=cells.map(d=>({d,ym:predictFull(anM,d),lns:anL?predictFull(anL,d):0}));
+  const r3=v=>Math.round(v*1000)/1000;
+  if(goal==='max') out.sort((p,q)=>(q.ym-p.ym)||(p.lns-q.lns));
+  else if(goal==='min') out.sort((p,q)=>(p.ym-q.ym)||(p.lns-q.lns));
+  else out.sort((p,q)=>{
+    const pi=Math.abs(p.ym-T)<=tolHalf, qi=Math.abs(q.ym-T)<=tolHalf;
+    if(pi!==qi) return pi?-1:1;
+    if(pi&&qi) return (r3(p.lns)-r3(q.lns))||(Math.abs(p.ym-T)-Math.abs(q.ym-T));
+    return Math.abs(p.ym-T)-Math.abs(q.ym-T);
+  });
+  return out;
+}
+
+/* =====================================================================
+   Fractional factorial designs (regular fractions over GF(2) and GF(3))
+===================================================================== */
+const FULL_LIMIT=32, BUDGET=108;
+const ROMAN={3:'III',4:'IV',5:'V',6:'VI',7:'VII',8:'VIII'};
+const resName=r=>r>=99?'full':(ROMAN[r]||String(r));
+function rankMod(vecs,q){
+  const m=vecs.map(v=>v.slice()), nc=m.length?m[0].length:0; let rank=0;
+  for(let c=0;c<nc&&rank<m.length;c++){
+    let piv=-1; for(let r=rank;r<m.length;r++) if(m[r][c]%q!==0){ piv=r; break; }
+    if(piv<0) continue;
+    const tmp=m[rank]; m[rank]=m[piv]; m[piv]=tmp;
+    const inv=(q===2||m[rank][c]%q===1)?1:2;
+    for(let j=0;j<nc;j++) m[rank][j]=(m[rank][j]*inv)%q;
+    for(let r=0;r<m.length;r++) if(r!==rank&&m[r][c]%q!==0){
+      const f=m[r][c]; for(let j=0;j<nc;j++) m[r][j]=(((m[r][j]-f*m[rank][j])%q)+q)%q;
+    }
+    rank++;
+  }
+  return rank;
+}
+function projPoints(q,b){
+  const pts=[], total=Math.pow(q,b);
+  for(let x=1;x<total;x++){
+    const v=[]; let y=x; for(let i=0;i<b;i++){ v.push(y%q); y=Math.floor(y/q); }
+    if(v.find(e=>e!==0)===1) pts.push(v);
+  }
+  return pts;
+}
+const _colCache={};
+/* m columns in GF(q)^b, first b are unit vectors, any t of them independent */
+function findColumns(q,b,m,t){
+  const key=q+'-'+b+'-'+m+'-'+t; if(key in _colCache) return _colCache[key];
+  const units=[]; for(let i=0;i<b;i++){ const v=Array(b).fill(0); v[i]=1; units.push(v); }
+  const pts=projPoints(q,b).filter(p=>!units.some(u=>u.every((x,i)=>x===p[i])));
+  const cols=units.slice(); let res=null;
+  const okAdd=v=>{
+    if(t<=1) return true;
+    let ok=true; const n=cols.length;
+    (function rec(start,chosen){
+      if(!ok) return;
+      if(chosen.length===t-1){ if(rankMod([v].concat(chosen.map(i=>cols[i])),q)<t) ok=false; return; }
+      for(let i=start;i<n;i++){ chosen.push(i); rec(i+1,chosen); chosen.pop(); if(!ok) return; }
+    })(0,[]);
+    return ok;
+  };
+  (function bt(start){
+    if(cols.length===m){ res=cols.map(c=>c.slice()); return true; }
+    for(let i=start;i<pts.length;i++){ if(okAdd(pts[i])){ cols.push(pts[i]); if(bt(i+1)) return true; cols.pop(); } }
+    return false;
+  })(0);
+  _colCache[key]=res; return res;
+}
+function bestFraction(q,m,b){ for(let t=b;t>=2;t--){ const c=findColumns(q,b,m,t); if(c) return {t,cols:c}; } return null; }
+function unitCols(m){ return Array.from({length:m},(_,i)=>{ const v=Array(m).fill(0); v[i]=1; return v; }); }
+function partOptions(q,m){
+  if(m===0) return [{b:0,p:0,runs:1,res:99,full:true,cols:[]}];
+  const maxB=q===2?8:5, out=[];
+  for(let b=1;b<m&&b<=maxB;b++){
+    const f=bestFraction(q,m,b);
+    if(f) out.push({b,p:m-b,runs:Math.pow(q,b),res:f.t+1,full:false,cols:f.cols});
+  }
+  out.push({b:m,p:0,runs:Math.pow(q,m),res:99,full:true,cols:unitCols(m)});
+  return out;
+}
+function genRuns(q,b,cols){
+  const total=Math.pow(q,b), runs=[];
+  for(let x=0;x<total;x++){
+    const base=[]; let y=x; for(let i=0;i<b;i++){ base.push(y%q); y=Math.floor(y/q); }
+    runs.push(cols.map(c=>{ let s=0; for(let i=0;i<b;i++) s+=base[i]*c[i]; return s%q; }));
+  }
+  return runs;
+}
+function designStrength(runs,ns){
+  const k=ns.length; let best=0;
+  for(let t=1;t<=Math.min(k,6);t++){
+    let ok=true;
+    (function rec(start,ch){
+      if(!ok) return;
+      if(ch.length===t){
+        const cnt=new Map(); runs.forEach(r=>{ const key=ch.map(f=>r[f]).join(','); cnt.set(key,(cnt.get(key)||0)+1); });
+        const cells=ch.reduce((a,f)=>a*ns[f],1), vals=[...cnt.values()];
+        if(cnt.size!==cells||vals.some(v=>v!==vals[0])) ok=false;
+        return;
+      }
+      for(let i=start;i<k;i++){ ch.push(i); rec(i+1,ch); ch.pop(); if(!ok) return; }
+    })(0,[]);
+    if(ok) best=t; else break;
+  }
+  return best;
+}
+function buildFactDesign(){
+  const keys=VK(), ns=keys.map(k=>S.lv[k].length), k=keys.length;
+  const fullR=ns.reduce((a,b)=>a*b,1);
+  if(!k) return {keys,ns,R:0,runs:[],full:true,res:99,label:'',fullR:1,why:''};
+  const idx2=[], idx3=[]; ns.forEach((n,i)=>{ (n===2?idx2:idx3).push(i); });
+  const mode=(S.fact&&S.fact.design)||'auto';
+  if(mode==='full'&&fullR>MAXRUNS) return {keys,ns,R:fullR,runs:[],full:true,res:99,label:'Full factorial',fullR,why:'',tooBig:true};
+  const o2=partOptions(2,idx2.length), o3=partOptions(3,idx3.length), all=[];
+  o2.forEach(a=>o3.forEach(b=>all.push({a,b,runs:a.runs*b.runs,res:Math.min(a.res,b.res),full:a.full&&b.full})));
+  let pick;
+  if(mode==='full') pick=all.find(c=>c.full);
+  else {
+    const ok=all.filter(c=>c.runs<=BUDGET&&(!c.full||c.runs<=FULL_LIMIT)), cap=c=>Math.min(c.res,5);
+    pick=ok.length?ok.sort((x,y)=>(cap(y)-cap(x))||(x.runs-y.runs))[0]:all.slice().sort((x,y)=>(x.runs-y.runs)||(y.res-x.res))[0];
+  }
+  const r2=genRuns(2,pick.a.b,pick.a.cols), r3=genRuns(3,pick.b.b,pick.b.cols), runs=[];
+  for(let i3=0;i3<r3.length;i3++) for(let i2=0;i2<r2.length;i2++){
+    const d=Array(k); idx2.forEach((fi,j)=>{ d[fi]=r2[i2][j]; }); idx3.forEach((fi,j)=>{ d[fi]=r3[i3][j]; }); runs.push(d);
+  }
+  const strength=pick.full?null:designStrength(runs,ns);
+  if(strength!=null&&strength+1<pick.res) pick.res=strength+1;
+  const check=pick.full?'':'Checked on the generated runs: every combination of any '+strength+' factors occurs equally often'+(strength+1>=pick.res?', which supports resolution '+resName(pick.res)+' (for mixed designs, the weakest part).':'; this is below the planned resolution, so the label was lowered.');
+  const part=(q,m,o)=>m===0?null:(o.full?q+'^'+m:q+'^('+m+'-'+o.p+')');
+  const label=pick.full?'Full factorial':'Fractional factorial '+[part(2,idx2.length,pick.a),part(3,idx3.length,pick.b)].filter(Boolean).join(' × ');
+  let why;
+  if(pick.full) why='Full factorial: '+runs.length+' runs, every combination, so all main effects and all interactions can be separated.';
+  else {
+    const meaning=pick.res>=5?'Main effects and two-factor interactions can all be estimated.':(pick.res===4?'Main effects are clear of two-factor interactions, but two-factor interactions are aliased with each other.':'Main effects are aliased with two-factor interactions, so each main effect is credited and interactions are assumed small.');
+    why='A full factorial would need '+fullR+' runs. This lab used '+label+': '+runs.length+' runs, resolution '+resName(pick.res)+'. '+meaning;
+  }
+  return {keys,ns,R:runs.length,runs,full:pick.full,res:pick.res,label,fullR,why,check,pick};
+}
+
+/* regression-based analysis for fractional designs (main effects and two-factor interactions) */
+function conVal(n,c,d){ return n===2?(d?1:-1):(c===0?d-1:(d===1?-2:1)); }
+function termColDefs(mask,ns){
+  const fs=[]; for(let f=0;f<ns.length;f++) if((mask>>f)&1) fs.push(f);
+  let defs=[[]];
+  fs.forEach(f=>{ const nd=[]; defs.forEach(d=>{ for(let c=0;c<ns[f]-1;c++) nd.push(d.concat([[f,c]])); }); defs=nd; });
+  return defs;
+}
+function evalCol(def,ns,d){ let v=1; def.forEach(p=>{ v*=conVal(ns[p[0]],p[1],d[p[0]]); }); return v; }
+function solveLin(A,b){
+  const n=b.length, M=A.map((row,i)=>row.concat([b[i]]));
+  for(let c=0;c<n;c++){
+    let piv=c; for(let r=c+1;r<n;r++) if(Math.abs(M[r][c])>Math.abs(M[piv][c])) piv=r;
+    const tmp=M[c]; M[c]=M[piv]; M[piv]=tmp;
+    const d=M[c][c]||1e-12;
+    for(let r=0;r<n;r++) if(r!==c){ const f=M[r][c]/d; if(f!==0) for(let j=c;j<=n;j++) M[r][j]-=f*M[c][j]; }
+  }
+  return M.map((row,i)=>row[n]/(row[i]||1e-12));
+}
+/* Orthonormal basis of the row space of X; a prediction row x0 is estimable only if it lies in that space. */
+function rowspaceBasis(X){
+  const Q=[];
+  X.forEach(row=>{
+    const w=row.slice();
+    for(let pass=0;pass<2;pass++) Q.forEach(q=>{ let dd=0; for(let i=0;i<w.length;i++) dd+=q[i]*w[i]; for(let i=0;i<w.length;i++) w[i]-=dd*q[i]; });
+    let n2=0; for(let i=0;i<w.length;i++) n2+=w[i]*w[i]; let r0=0; for(let i=0;i<row.length;i++) r0+=row[i]*row[i];
+    if(Math.sqrt(n2)>1e-7*Math.sqrt(r0||1)){ const nn=Math.sqrt(n2); Q.push(w.map(v=>v/nn)); }
+  });
+  return Q;
+}
+function inRowspace(Q,x0){
+  const w=x0.slice(); Q.forEach(q=>{ let dd=0; for(let i=0;i<w.length;i++) dd+=q[i]*x0[i]; for(let i=0;i<w.length;i++) w[i]-=dd*q[i]; });
+  let n2=0, n0=0; for(let i=0;i<w.length;i++){ n2+=w[i]*w[i]; n0+=x0[i]*x0[i]; }
+  return Math.sqrt(n2)<=1e-6*Math.sqrt(n0||1);
+}
+/* x0'(X'X)^-1 x0 for the fitted design matrix X and a prediction row x0; Infinity when x0 is not estimable from the design */
+function leverage(X,x0){
+  if(!inRowspace(rowspaceBasis(X),x0)) return Infinity;
+  const p=x0.length, A=Array.from({length:p},()=>Array(p).fill(0));
+  X.forEach(row=>{ for(let a=0;a<p;a++) for(let b=0;b<p;b++) A[a][b]+=row[a]*row[b]; });
+  let tr=0; for(let a=0;a<p;a++) tr+=A[a][a];
+  const ridge=1e-9*Math.max(tr/p,1); for(let a=0;a<p;a++) A[a][a]+=ridge;
+  const z=solveLin(A,x0); return x0.reduce((s2,v,i)=>s2+v*z[i],0);
+}
+function factorialRow(masks,ns,d){ const row=[1]; masks.forEach(m=>{ termColDefs(m,ns).forEach(def=>row.push(evalCol(def,ns,d))); }); return row; }
+function analyzeFrac(Y,fd,alpha,errPref){
+  const ns=fd.ns, keys=fd.keys, runs=fd.runs, k=ns.length, R=Y.length, r=Y[0].length;
+  const stride=[]; ns.reduce((acc,n,i)=>{ stride[i]=acc; return acc*n; },1);
+  const rm=Y.map(a=>mean(a)), grand=mean(rm);
+  let ssPure=0, ssRuns=0;
+  Y.forEach((a,i)=>{ a.forEach(v=>{ ssPure+=(v-rm[i])*(v-rm[i]); }); ssRuns+=r*(rm[i]-grand)*(rm[i]-grand); });
+  const ssTot=ssRuns+ssPure;
+  const masks=[]; for(let f=0;f<k;f++) masks.push(1<<f);
+  for(let f=0;f<k;f++) for(let g=f+1;g<k;g++) masks.push((1<<f)|(1<<g));
+  const dot=(a,b)=>{ let s=0; for(let i=0;i<R;i++) s+=a[i]*b[i]; return s; };
+  const Q=[Float64Array.from({length:R},()=>1/Math.sqrt(R))];
+  const yc=Float64Array.from(rm,v=>v-grand);
+  const tl=[];
+  masks.forEach(mask=>{
+    const defs=termColDefs(mask,ns), vecs=defs.map(def=>Float64Array.from(runs,d=>evalCol(def,ns,d)));
+    let dfNew=0, ss=0;
+    vecs.forEach(v0=>{
+      const w=Float64Array.from(v0);
+      for(let pass=0;pass<2;pass++) Q.forEach(q=>{ const dd=dot(q,w); for(let i=0;i<R;i++) w[i]-=dd*q[i]; });
+      const nrm=Math.sqrt(dot(w,w)), n0=Math.sqrt(dot(v0,v0));
+      if(nrm>1e-7*n0){ for(let i=0;i<R;i++) w[i]/=nrm; Q.push(w); const c=dot(w,yc); ss+=r*c*c; dfNew++; }
+    });
+    tl.push({mask,name:termNameOf(mask,keys),order:popcount(mask),df:defs.length,defs,vecs,dfNew,ss,partner:null});
+  });
+  const nrm2=v=>Math.sqrt(dot(v,v)), aliasGroups=[];
+  tl.forEach((t,ti)=>{
+    if(t.dfNew>=t.df) return;
+    let best=null, bc=0;
+    for(let ui=0;ui<ti;ui++){
+      const u=tl[ui]; if(u.dfNew===0) continue;
+      u.vecs.forEach(uv=>t.vecs.forEach(tv=>{ const c=Math.abs(dot(uv,tv))/(nrm2(uv)*nrm2(tv)); if(c>bc){ bc=c; best=u; } }));
+    }
+    t.partner=(best&&bc>0.7)?best.name:null;
+    if(t.dfNew===0) aliasGroups.push(t.partner?t.name+' ≡ '+t.partner:t.name+' (fully aliased)');
+  });
+  const cred=tl.filter(t=>t.dfNew>0);
+  const dfModel=cred.reduce((s,t)=>s+t.dfNew,0), ssModelAll=cred.reduce((s,t)=>s+t.ss,0);
+  const dfLeft=Math.max(0,R-1-dfModel), ssLeft=Math.max(0,ssRuns-ssModelAll);
+  let mode=errPref; if(mode==='auto') mode=r>=2?'pure':'pool3'; if(mode==='pure'&&r<2) mode='pool3';
+  let ssE=0, dfE=0;
+  if(r>=2){ ssE=ssPure; dfE=R*(r-1); }
+  if(mode==='pool3'){ ssE+=ssLeft; dfE+=dfLeft; }
+  const noErr=dfE===0, mse=dfE>0?ssE/dfE:0;
+  const terms=cred.map(t=>({mask:t.mask,name:t.name,order:t.order,df:t.dfNew,ss:t.ss,ms:t.ss/t.dfNew,effect:null,coef:null,pooled:false,aliasNote:t.partner,aliasWith:tl.filter(u=>u.dfNew===0&&u.partner===t.name).map(u=>u.name),dfFull:t.df,partial:(t.dfNew<t.df)?(t.partner||'other terms'):null,pct:ssTot>0?100*t.ss/ssTot:0}));
+  terms.forEach(t=>{
+    if(noErr){ t.F=null; t.p=null; t.sig=t.pct>=5; return; }
+    if(mse>1e-14){ t.F=t.ms/mse; t.p=pF(t.F,t.df,dfE); } else { t.F=Infinity; t.p=t.ss>1e-14?0:1; }
+    t.sig=t.p<alpha;
+  });
+  const marg=new Array(1<<k);
+  masks.forEach(m=>{
+    const sum=new Map(), cnt=new Map();
+    for(let i=0;i<R;i++){
+      let key=0; for(let f=0;f<k;f++) if((m>>f)&1) key+=runs[i][f]*stride[f];
+      sum.set(key,(sum.get(key)||0)+rm[i]); cnt.set(key,(cnt.get(key)||0)+1);
+    }
+    const mm=new Map(); sum.forEach((s,key)=>mm.set(key,s/cnt.get(key))); marg[m]=mm;
+  });
+  /* prediction model: significant terms, ridge-stabilised least squares on run means */
+  const colsM=[];
+  terms.filter(t=>t.sig).forEach(t=>{ const tt=tl.find(x=>x.mask===t.mask); tt.defs.forEach(def=>colsM.push({def,term:t,single:tt.defs.length===1})); });
+  const X=runs.map(d=>[1].concat(colsM.map(c=>evalCol(c.def,ns,d)))), p=X[0].length;
+  const A=Array.from({length:p},()=>Array(p).fill(0)), bv=Array(p).fill(0);
+  X.forEach((row,i)=>{ for(let a=0;a<p;a++){ bv[a]+=row[a]*rm[i]; for(let c=0;c<p;c++) A[a][c]+=row[a]*row[c]; } });
+  for(let a=0;a<p;a++) A[a][a]+=1e-8;
+  const beta=solveLin(A,bv);
+  colsM.forEach((c,j)=>{ if(c.single){ c.term.coef=beta[j+1]; c.term.effect=2*beta[j+1]; } });
+  const predictFn=d=>{ let y=beta[0]; colsM.forEach((c,j)=>{ y+=beta[j+1]*evalCol(c.def,ns,d); }); return y; };
+  /* A setting is only unambiguous if EVERY candidate term (kept or aliased away) agrees there: its row over all
+     candidate columns must lie in the row space of the fired runs. Judging against the kept terms alone would miss
+     aliased pairs that coincide on the fired runs but differ elsewhere. */
+  const allDefs=[]; tl.forEach(t=>t.defs.forEach(def=>allDefs.push(def)));
+  const rowAll=d=>[1].concat(allDefs.map(def=>evalCol(def,ns,d))), Qall=rowspaceBasis(runs.map(rowAll));
+  const estimableFn=d=>inRowspace(Qall,rowAll(d));
+  const ssModel=terms.filter(t=>t.sig).reduce((s,t)=>s+t.ss,0);
+  return {frac:true,r,R,k,keys,ns,stride,digs:runs,grand,rm,marg,terms,ssTot,ssPure,ssE,dfE,mse,mode:noErr?'none':mode,noErr,
+          r2:ssTot>0?ssModel/ssTot:0, sigma:(r>=2)?Math.sqrt(ssPure/(R*(r-1))):null,predictFn,estimableFn,aliasGroups,ssLeft,dfLeft,dfModel,dfPossible:tl.reduce((s2,t)=>s2+t.df,0)};
+}
+function analyzeAny(Y,fd,alpha,errPref){
+  return fd.full?analyzeFull(Y,fd.ns,fd.keys,alpha,errPref,fd.runs):analyzeFrac(Y,fd,alpha,errPref);
+}
+function allCells(ns){
+  const total=ns.reduce((a,b)=>a*b,1), out=[];
+  for(let c=0;c<total;c++) out.push(digitsOf(c,ns));
+  return out;
+}
+
+/* =====================================================================
+   Taguchi orthogonal arrays
+===================================================================== */
+const parity=x=>popcount(x)&1;
+function xorArray(nruns,ncols){
+  const rows=[]; for(let r=0;r<nruns;r++){ const row=[]; for(let j=1;j<=ncols;j++) row.push(parity(r&j)+1); rows.push(row); }
+  return {rows,lev:Array(ncols).fill(2)};
+}
+function l12(){
+  const gen=[1,1,-1,1,1,1,-1,-1,-1,1,-1], rows=[];
+  for(let r=0;r<11;r++) rows.push(gen.map((_,c)=>gen[(c+11-r)%11]>0?1:2));
+  rows.push(Array(11).fill(2));
+  return {rows,lev:Array(11).fill(2)};
+}
+function l9(){
+  const rows=[]; for(let r=0;r<9;r++){ const a=Math.floor(r/3), b=r%3; rows.push([a,b,(a+b)%3,(a+2*b)%3].map(x=>x+1)); }
+  return {rows,lev:[3,3,3,3]};
+}
+function l27(){
+  const co=[[1,0,0],[0,1,0],[1,1,0],[1,2,0],[0,0,1],[1,0,1],[1,0,2],[0,1,1],[0,1,2],[1,1,1],[1,1,2],[1,2,1],[1,2,2]];
+  const rows=[]; for(let r=0;r<27;r++){ const a=Math.floor(r/9), b=Math.floor(r/3)%3, c=r%3; rows.push(co.map(v=>((v[0]*a+v[1]*b+v[2]*c)%3)+1)); }
+  return {rows,lev:Array(13).fill(3)};
+}
+const L18ROWS=[
+ [1,1,1,1,1,1,1,1],[1,1,2,2,2,2,2,2],[1,1,3,3,3,3,3,3],
+ [1,2,1,1,2,2,3,3],[1,2,2,2,3,3,1,1],[1,2,3,3,1,1,2,2],
+ [1,3,1,2,1,3,2,3],[1,3,2,3,2,1,3,1],[1,3,3,1,3,2,1,2],
+ [2,1,1,3,3,2,2,1],[2,1,2,1,1,3,3,2],[2,1,3,2,2,1,1,3],
+ [2,2,1,2,3,1,3,2],[2,2,2,3,1,2,1,3],[2,2,3,1,2,3,2,1],
+ [2,3,1,3,2,3,1,2],[2,3,2,1,3,1,2,3],[2,3,3,2,1,2,3,1]];
+const ARRAYS={
+  L4:()=>xorArray(4,3), L8:()=>xorArray(8,7), L12:l12, L16:()=>xorArray(16,15),
+  L9:l9, L18:()=>({rows:L18ROWS,lev:[2,3,3,3,3,3,3,3]}), L27:l27
+};
+const ARRAY_SPEC=[
+  {name:'L4',runs:4,two:3,three:0},{name:'L8',runs:8,two:7,three:0},{name:'L9',runs:9,two:0,three:4},
+  {name:'L12',runs:12,two:11,three:0},{name:'L16',runs:16,two:15,three:0},
+  {name:'L18',runs:18,two:1,three:7},{name:'L27',runs:27,two:0,three:13}];
+function tagBalanceText(des){
+  const N=des.N, A=des.assign;
+  const cnts=A.map(a=>{ const c=Array(a.n).fill(0); des.rows.forEach(r=>{ c[a.map[r[a.col]-1]]++; }); return c; });
+  let bad=0;
+  for(let i=0;i<A.length;i++) for(let j=i+1;j<A.length;j++){
+    const nab={}; des.rows.forEach(r=>{ const key=A[i].map[r[A[i].col]-1]+','+A[j].map[r[A[j].col]-1]; nab[key]=(nab[key]||0)+1; });
+    for(let x=0;x<A[i].n;x++) for(let y=0;y<A[j].n;y++) if((nab[x+','+y]||0)*N!==cnts[i][x]*cnts[j][y]) bad++;
+  }
+  const dummies=A.filter(a=>a.n===2&&des.lev[a.col]===3).map(a=>a.key);
+  let s='Checked on the actual array: '+(bad===0?'every pair of factors has proportional level counts, so no factor is confounded with another.':'some factor pairs are not proportionally balanced.');
+  s+=' Level counts: '+A.map((a,i)=>a.key+' '+cnts[i].join('/')).join(', ')+'.';
+  if(dummies.length) s+=' Factor'+(dummies.length>1?'s ':' ')+dummies.join(', ')+' sit in three-level columns (dummy-level method), so their first level is run twice as often as their second and is estimated more precisely. For exactly balanced two-level factors, use the Factorial tab.';
+  return s;
+}
+function tagDesign(){
+  const keys=VK(); if(!keys.length) return null;
+  const ns=keys.map(k=>S.lv[k].length);
+  const n2=ns.filter(n=>n===2).length, n3=ns.length-n2;
+  const rejected=[]; let sp=null;
+  for(const c of ARRAY_SPEC){
+    const need3=n3+(n2-Math.min(n2,c.two));
+    if(need3<=c.three){ sp=c; break; }
+    rejected.push(c.name+' ('+c.runs+' runs): '+(n3>c.three?'only '+c.three+' three-level columns for '+n3+' three-level factors':(c.two+c.three)+' columns for '+keys.length+' factors'));
+  }
+  const dummyNeeded=n2-Math.min(n2,sp.two)>0;
+  const smallest3=need=>ARRAY_SPEC.filter(c=>c.two===0&&c.three>=need).sort((x,y)=>x.runs-y.runs)[0];
+  const smallest2=need=>ARRAY_SPEC.filter(c=>c.three===0&&c.two>=need).sort((x,y)=>x.runs-y.runs)[0];
+  let balAlt=null;
+  if(dummyNeeded&&n2>=1&&n3>=1){
+    if(n2===1) balAlt={name:'L18',N:18};
+    else { const A2=smallest2(n2), A3=smallest3(n3); if(A2&&A3) balAlt={name:A2.name+' × '+A3.name,N:A2.runs*A3.runs,a2:A2.name,a3:A3.name}; }
+  }
+  let name=sp.name, arr=ARRAYS[name](), balancedMode=false;
+  if(S.tag.balance==='balanced'&&balAlt){
+    balancedMode=true; name=balAlt.name;
+    if(balAlt.a2){ const R2=ARRAYS[balAlt.a2](), R3=ARRAYS[balAlt.a3](), rows=[]; R3.rows.forEach(r3=>R2.rows.forEach(r2=>rows.push(r2.concat(r3)))); arr={rows,lev:R2.lev.concat(R3.lev)}; }
+    else arr=ARRAYS.L18();
+  }
+  const cols2=arr.lev.map((l,i)=>l===2?i:-1).filter(i=>i>=0), cols3=arr.lev.map((l,i)=>l===3?i:-1).filter(i=>i>=0);
+  const col={}; let u2=0, u3=0;
+  keys.forEach((k,i)=>{ if(ns[i]===2&&u2<cols2.length) col[k]=cols2[u2++]; });
+  keys.forEach(k=>{ if(col[k]===undefined) col[k]=cols3[u3++]; });
+  const assign=keys.map((k,i)=>({key:k,col:col[k],n:ns[i],map:(ns[i]===2&&arr.lev[col[k]]===3)?[0,1,0]:(ns[i]===2?[0,1]:[0,1,2])}));
+  const used=new Set(assign.map(a=>a.col));
+  const why=balancedMode?('You vary '+n2+' two-level and '+n3+' three-level factors and asked for exactly balanced factors. '+name+' ('+arr.rows.length+' runs) is the smallest array in which every factor sits in a column of its own level count'+(balAlt.a2?', built by crossing a two-level array with a three-level array.':'.')):
+    ('You vary '+n2+' two-level and '+n3+' three-level factor'+(keys.length===1?'':'s')+'. '+name+' ('+arr.rows.length+' runs) is the smallest standard array that fits.'+(rejected.length?' Smaller arrays that do not fit: '+rejected.join('; ')+'.':''));
+  const des0={name,N:arr.rows.length,rows:arr.rows,lev:arr.lev,assign,unused:arr.lev.map((_,i)=>i).filter(i=>!used.has(i)),why};
+  des0.check=tagBalanceText(des0);
+  des0.dummies=assign.filter(a2=>a2.n===2&&arr.lev[a2.col]===3).map(a2=>a2.key); des0.balAlt=balAlt;
+  return des0;
+}
+/* S/N ratios. When a ratio is mathematically undefined the function returns NaN and snIssue() says why;
+   it never returns a huge finite number produced by a numerical safeguard. */
+function snIssue(type,ys,T){
+  if(ys.some(y=>typeof y!=='number'||!isFinite(y))) return 'it has an invalid value';
+  if(ys.some(y=>!(y>0))) return 'a distance must be positive, and it has a shot that is zero or negative';
+  const n=ys.length, m=mean(ys);
+  if(type==='ntb'){
+    if(n<2) return 'nominal-is-best needs at least 2 replicates';
+    if(sd(ys)<1e-12) return 'its replicates are identical, so the spread is zero';
+    if(!(m>0)) return 'its mean is not positive';
+  } else if(type==='ltb'){ if(ys.some(y=>!(y>0))) return 'it has a shot that is zero or negative';
+  } else if(type==='stb'){ if(!(mean(ys.map(y=>y*y))>0)) return 'every shot is zero';
+  } else if(type==='msd'){ if(!(mean(ys.map(y=>(y-T)*(y-T)))>0)) return 'every shot is exactly on target';
+  }
+  return null;
+}
+function snRatio(type,ys,T){
+  if(snIssue(type,ys,T)) return NaN;
+  const m=mean(ys);
+  if(type==='ntb'){ const s2=sd(ys); return 10*Math.log10((m*m)/(s2*s2)); }
+  if(type==='msd') return -10*Math.log10(mean(ys.map(y=>(y-T)*(y-T))));
+  if(type==='ltb') return -10*Math.log10(mean(ys.map(y=>1/(y*y))));
+  return -10*Math.log10(mean(ys.map(y=>y*y)));
+}
+function tagResp(v,des,poolSel){
+  const grand=mean(v);
+  const sst=v.reduce((s,x)=>s+(x-grand)*(x-grand),0);
+  const fac=des.assign.map(a=>{
+    const sum=Array(a.n).fill(0), cnt=Array(a.n).fill(0);
+    v.forEach((x,i)=>{ const l=a.map[des.rows[i][a.col]-1]; sum[l]+=x; cnt[l]++; });
+    const m=sum.map((s,l)=>s/cnt[l]);
+    const ss=m.reduce((s,mv,l)=>s+cnt[l]*(mv-grand)*(mv-grand),0);
+    return {key:a.key,col:a.col,n:a.n,m,cnt,delta:Math.max(...m)-Math.min(...m),ss,df:a.n-1};
+  });
+  let ssU=0, dfU=0;
+  des.unused.forEach(c=>{
+    const L=des.lev[c], sum=Array(L).fill(0), cnt=Array(L).fill(0);
+    v.forEach((x,i)=>{ const l=des.rows[i][c]-1; sum[l]+=x; cnt[l]++; });
+    sum.forEach((s,l)=>{ if(cnt[l]) ssU+=cnt[l]*(s/cnt[l]-grand)*(s/cnt[l]-grand); });
+    dfU+=L-1;
+  });
+  const order=fac.map((_,i)=>i).sort((a,b)=>fac[a].ss/fac[a].df-fac[b].ss/fac[b].df);
+  const pooled=new Set();
+  const errNow=()=>{ let ss=ssU, df=dfU; pooled.forEach(i=>{ ss+=fac[i].ss; df+=fac[i].df; }); return {ss,df}; };
+  if(poolSel==='auto'){
+    for(const i of order){
+      if(fac.length-pooled.size<=1) break;
+      const e=errNow(), mse=e.df>0?e.ss/e.df:null, ms=fac[i].ss/fac[i].df;
+      if(e.df<1 || (mse!==null && mse>1e-12 && ms/mse<2)) pooled.add(i); else break;
+    }
+  } else order.slice(0,Math.min(+poolSel,fac.length-1)).forEach(i=>pooled.add(i));
+  const e=errNow(), dfE=e.df, mse=dfE>0?e.ss/dfE:null;
+  let sumPct=0;
+  fac.forEach((f,i)=>{
+    f.pooled=pooled.has(i); f.F=null; f.p=null; f.pct=0; f.ms=f.ss/f.df;
+    if(!f.pooled){
+      if(mse!==null){
+        if(mse>1e-12){ f.F=f.ms/mse; f.p=pF(f.F,f.df,dfE); } else { f.F=Infinity; f.p=0; }
+        f.pct=sst>0?Math.max(0,(f.ss-f.df*mse)/sst)*100:0;
+      } else f.pct=sst>0?f.ss/sst*100:0;
+      sumPct+=f.pct;
+    }
+  });
+  const rank=fac.map((_,i)=>i).sort((a,b)=>fac[b].delta-fac[a].delta);
+  rank.forEach((i,r)=>{ fac[i].rank=r+1; });
+  return {v,grand,fac,sst,dfE,mse,ssE:e.ss,errPct:Math.max(0,100-sumPct),nUnused:des.unused.length,mseSpare:dfU>0?ssU/dfU:null,dfSpare:dfU};
+}
+function analyzeTaguchi(Y,des,type,T,pool){
+  const rows=Y.map(a=>({mean:mean(a),sd:sd(a),sn:snRatio(type,a,T)}));
+  return {rows,sn:tagResp(rows.map(r=>r.sn),des,pool),mean:tagResp(rows.map(r=>r.mean),des,pool)};
+}
+const isImportant=(f,alpha)=>!f.pooled&&(f.p!=null?f.p<alpha:f.pct>=10);
+function predT(resp,d){
+  let y=resp.grand;
+  resp.fac.forEach((f,fi)=>{ if(!f.pooled) y+=f.m[d[fi]]-resp.grand; });
+  return y;
+}
+function taguchiOptimum(an,T,type){
+  const keys=VK(), ns=keys.map(k=>S.lv[k].length);
+  const total=ns.reduce((a,b)=>a*b,1), comb=[];
+  for(let c=0;c<total;c++){ const d=digitsOf(c,ns); comb.push({d,sn:predT(an.sn,d),mean:predT(an.mean,d)}); }
+  const bySN=comb.slice().sort((a,b)=>b.sn-a.sn);
+  const notes=[];
+  const valsFrom=d=>{ const o={}; keys.forEach((k,i)=>{ o[k]=S.lv[k][d[i]]; }); return fullParams(o); };
+  if(type==='ntb'){
+    let best=null;
+    keys.forEach((k,fi)=>{
+      if(DEF[k].type!=='cont') return;
+      const lv=S.lv[k];
+      comb.forEach(c=>{
+        if(c.d[fi]!==0) return;
+        const pts=lv.map((val,l)=>{ const d=c.d.slice(); d[fi]=l; return {val,y:predT(an.mean,d),s:predT(an.sn,d)}; });
+        for(let l=0;l<pts.length-1;l++){
+          const a=pts[l], b=pts[l+1];
+          if(Math.abs(b.y-a.y)<1e-9) continue;
+          const t=(T-a.y)/(b.y-a.y);
+          if(t<-1e-9||t>1+1e-9) continue;
+          const sn=a.s+(b.s-a.s)*t;
+          if(!best||sn>best.sn+1e-9) best={fi,k,d:c.d.slice(),l,t,x:a.val+t*(b.val-a.val),sn,s0:Math.min(...pts.map(p=>p.s)),s1:Math.max(...pts.map(p=>p.s))};
+        }
+      });
+    });
+    if(best){
+      const vals=valsFrom(best.d); vals[best.k]=roundVal(best.k,best.x);
+      const others=keys.filter(k=>k!==best.k).map(k=>k+' '+fmtVal(k,vals[k])).join(', ');
+      if(others) notes.push('Step 1, cut the variation: '+others+' were set at the levels that give the highest predicted S/N.');
+      notes.push('Step 2, steer the mean: factor '+best.k+' ('+DEF[best.k].name+') is the tuning knob, set to '+fmtVal(best.k,vals[best.k])+' so the predicted mean reaches the target.');
+      if(S.lv[best.k].length===2) notes.push('The tuned value is a straight line between only two tested levels of '+best.k+'. If the response curves, the prediction can be off by more than the tolerance (in this catapult\'s physics it often is); give '+best.k+' three levels to capture the curvature.');
+      const dsn=best.s1-best.s0;
+      notes.push('Across its tested levels '+best.k+' changes the predicted S/N by '+fmt(dsn,1)+' dB'+(dsn>3?', so it is not a pure adjustment factor: tuning it also moves consistency. Treat the confirmation run with extra care.':', so tuning it costs little consistency.'));
+      return {vals,predSN:best.sn,predMean:T,notes,d:best.d,tune:{fi:best.fi,l:best.l,t:best.t}};
+    }
+    const maxSN=bySN[0].sn;
+    const pool=comb.filter(c=>c.sn>=maxSN-3).sort((a,b)=>Math.abs(a.mean-T)-Math.abs(b.mean-T));
+    notes.push('No continuous factor can tune the predicted mean onto the target within its tested levels. Picked the setting within 3 dB of the best S/N whose predicted mean is closest to the target. Consider widening the levels or varying A, B, F, G or H.');
+    return {vals:valsFrom(pool[0].d),predSN:pool[0].sn,predMean:pool[0].mean,notes,d:pool[0].d,tune:null};
+  }
+  notes.push('One-step optimum: the setting with the highest predicted S/N for this quality characteristic.');
+  return {vals:valsFrom(bySN[0].d),predSN:bySN[0].sn,predMean:bySN[0].mean,notes,d:bySN[0].d,tune:null};
+}
+
+/* =====================================================================
+   SVG charts
+===================================================================== */
+function niceRange(vals,padFrac){
+  let lo=Math.min(...vals), hi=Math.max(...vals);
+  if(!isFinite(lo)||!isFinite(hi)){ lo=0; hi=1; }
+  if(hi-lo<1e-9){ lo-=0.5; hi+=0.5; }
+  const pad=(hi-lo)*(padFrac==null?0.18:padFrac);
+  return [lo-pad,hi+pad];
+}
+function tickFmt(range){ const sp=range[1]-range[0]; const d=sp<0.5?3:sp<5?2:sp<50?1:0; return v=>v.toFixed(d); }
+const SERCOL=['var(--accent)','var(--accent2)','var(--muted)'];
+function linePanel(o){
+  const W=240,H=190,ml=46,mr=40,mt=36,mb=34, n=o.xl.length;
+  const x0=ml+22, x1=W-mr-6;
+  const X=i=>n===1?(x0+x1)/2:x0+(x1-x0)*i/(n-1);
+  const [y0,y1]=o.y; const tf=tickFmt(o.y);
+  const Y=v=>mt+(1-(v-y0)/(y1-y0))*(H-mt-mb);
+  let s='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="'+esc(o.title)+'">';
+  s+='<text class="pt" x="8" y="16">'+esc(o.title)+'</text>';
+  if(o.sub) s+='<text class="ax" x="8" y="29">'+esc(o.sub)+'</text>';
+  for(let i=0;i<=3;i++){
+    const v=y0+(y1-y0)*i/3, yy=Y(v);
+    s+='<line class="gl" x1="'+ml+'" x2="'+(W-mr)+'" y1="'+yy+'" y2="'+yy+'"/><text class="ax" x="'+(ml-5)+'" y="'+(yy+3)+'" text-anchor="end">'+tf(v)+'</text>';
+  }
+  s+='<line class="axl" x1="'+ml+'" x2="'+(W-mr)+'" y1="'+(H-mb)+'" y2="'+(H-mb)+'"/>';
+  if(o.hl!=null) s+='<line x1="'+ml+'" x2="'+(W-mr)+'" y1="'+Y(o.hl)+'" y2="'+Y(o.hl)+'" stroke="var(--muted)" stroke-dasharray="4 3"/>';
+  o.series.forEach((se,si)=>{
+    const col=SERCOL[si%3];
+    let pts=''; se.v.forEach((v,i)=>{ pts+=(i?' ':'')+X(i)+','+Y(v); });
+    s+='<polyline points="'+pts+'" fill="none" stroke="'+col+'" stroke-width="2.4"'+(si===2?' stroke-dasharray="6 3"':'')+'/>';
+    se.v.forEach((v,i)=>{ s+='<circle cx="'+X(i)+'" cy="'+Y(v)+'" r="4" fill="'+col+'"/>'; });
+    if(se.name) s+='<text class="lb" x="'+(X(n-1)+8)+'" y="'+(Y(se.v[n-1])+3)+'" style="fill:'+col+'">'+esc(se.name)+'</text>';
+  });
+  o.xl.forEach((l,i)=>{ s+='<text class="ax" x="'+X(i)+'" y="'+(H-mb+14)+'" text-anchor="middle">'+esc(l)+'</text>'; });
+  if(o.xt) s+='<text class="ax" x="'+((x0+x1)/2)+'" y="'+(H-6)+'" text-anchor="middle">'+esc(o.xt)+'</text>';
+  if(o.badge) s+='<text class="lb" x="'+(W-8)+'" y="16" text-anchor="end" style="fill:var(--accent2);font-weight:600">'+esc(o.badge)+'</text>';
+  return s+'</svg>';
+}
+function paretoSVG(terms){
+  const rows=[...terms].sort((a,b)=>b.pct-a.pct).slice(0,14);
+  const W=640, rh=22, ml=74, mr=96, mt=30, H=mt+rows.length*rh+14;
+  const mx=Math.max(...rows.map(t=>t.pct),1e-9)*1.05;
+  const X=v=>ml+(v/mx)*(W-ml-mr);
+  let s='<svg class="wide" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Pareto chart of contribution">';
+  s+='<text class="pt" x="4" y="16">% contribution to total variation</text>';
+  rows.forEach((t,i)=>{
+    const y=mt+i*rh, w=Math.max(1,X(t.pct)-ml);
+    const col=t.pooled?'var(--line)':(t.sig?(((t.aliasWith&&t.aliasWith.length)||t.partial)?'var(--accent2)':'var(--accent)'):'var(--nsig)');
+    s+='<text class="lb" x="'+(ml-8)+'" y="'+(y+14)+'" text-anchor="end" style="font-weight:'+(t.sig?'700':'400')+'">'+esc(t.name)+'</text>';
+    s+='<rect x="'+ml+'" y="'+(y+3)+'" width="'+w+'" height="'+(rh-8)+'" fill="'+col+'" rx="2"/>';
+    s+='<text class="lb" x="'+(ml+w+6)+'" y="'+(y+14)+'">'+t.pct.toFixed(1)+'%'+(t.pooled?' (pooled)':'')+'</text>';
+  });
+  s+='<line class="axl" x1="'+ml+'" x2="'+ml+'" y1="'+mt+'" y2="'+(H-10)+'"/>';
+  return s+'</svg>';
+}
+
+/* =====================================================================
+   Catapult canvas view
+===================================================================== */
+let REDUCE=false;
+function theme(){
+  const cs=getComputedStyle(document.documentElement), g=n=>cs.getPropertyValue(n).trim();
+  return {paper:g('--canvas'),grid:g('--grid'),ink:g('--ink'),muted:g('--muted'),accent:g('--accent'),accent2:g('--accent2'),line:g('--line')};
+}
+class CatView{
+  constructor(canvas,ratio){
+    this.cv=canvas; this.ctx=canvas.getContext('2d'); this.ratio=ratio||0.42;
+    this.p=fullParams({}); this.marks=[]; this.trails=[];
+    this.anim=null; this.psi=null; this.ball=null; this.W=0; this.H=0;
+    this.xMin=-0.9; this.xMax=12;
+  }
+  resize(){
+    const w=this.cv.clientWidth; if(!w) return;
+    const dpr=window.devicePixelRatio||1, h=Math.round(w*this.ratio);
+    this.cv.width=Math.round(w*dpr); this.cv.height=Math.round(h*dpr); this.cv.style.height=h+'px';
+    this.W=w; this.H=h; this.dpr=dpr; this.draw();
+  }
+  setParams(p){ this.p=Object.assign({},p); if(!this.anim) this.draw(); }
+  clear(){ this.marks=[]; this.trails=[]; this.draw(); }
+  addInstant(p,shot){
+    this.p=Object.assign({},p); this.marks.push(shot.flight.range); this.trails.push(shot.flight);
+    if(this.marks.length>60) this.marks.shift(); if(this.trails.length>6) this.trails.shift();
+    if(!this.anim) this.draw();
+  }
+  fire(p,shot){
+    if(this.anim) this.finish();
+    this.p=Object.assign({},p);
+    this.anim={t0:performance.now(),shot};
+    this.loop();
+  }
+  finish(){
+    const a=this.anim; if(!a) return;
+    this.anim=null; this.psi=null; this.ball=null;
+    this.marks.push(a.shot.flight.range); this.trails.push(a.shot.flight);
+    if(this.marks.length>60) this.marks.shift(); if(this.trails.length>6) this.trails.shift();
+    this.draw();
+  }
+  psiStop(){ return 90+this.p.B; }
+  psiStart(){ return 90+this.p.B+this.p.A; }
+  loop(){
+    const a=this.anim; if(!a) return;
+    const t=(performance.now()-a.t0)/1000, f=a.shot.flight;
+    const sw=0.28, fl=Math.min(1.7,Math.max(0.7,f.t*1.3));
+    const ps0=this.psiStart(), ps1=this.psiStop();
+    if(t<sw){ const u=t/sw; this.psi=ps0-(ps0-ps1)*u*u; this.ball=null; }
+    else if(t<sw+fl){
+      const tt=((t-sw)/fl)*f.t; this.psi=ps1;
+      this.ball={x:f.xr+f.vx*tt, y:Math.max(0,f.h0+f.vy*tt-0.5*G*tt*tt)};
+    } else { this.finish(); return; }
+    this.draw();
+    requestAnimationFrame(()=>this.loop());
+  }
+  draw(){
+    if(!this.W) return;
+    const c=this.ctx, th=theme(), W=this.W, H=this.H;
+    c.setTransform(this.dpr,0,0,this.dpr,0,0);
+    c.clearRect(0,0,W,H);
+    c.fillStyle=th.paper; c.fillRect(0,0,W,H);
+    const sc=W/(this.xMax-this.xMin), gy=H-Math.round(H*0.16);
+    const X=x=>(x-this.xMin)*sc, Y=y=>gy-y*sc;
+    c.lineWidth=1;
+    for(let x=Math.ceil(this.xMin*2)/2; x<=this.xMax; x+=0.5){
+      c.strokeStyle=th.grid; c.globalAlpha=(Math.abs(x-Math.round(x))<1e-6)?1:0.45;
+      c.beginPath(); c.moveTo(X(x),0); c.lineTo(X(x),H); c.stroke();
+    }
+    for(let y=0.5; Y(y)>0; y+=0.5){
+      c.globalAlpha=(Math.abs(y-Math.round(y))<1e-6)?1:0.45;
+      c.beginPath(); c.moveTo(0,Y(y)); c.lineTo(W,Y(y)); c.stroke();
+    }
+    c.globalAlpha=1;
+    const tx0=X(S.target-S.tol), tx1=X(S.target+S.tol);
+    c.fillStyle=th.accent2; c.globalAlpha=0.13; c.fillRect(tx0,0,tx1-tx0,gy); c.globalAlpha=0.9; c.fillRect(tx0,gy,tx1-tx0,7); c.globalAlpha=1;
+    c.strokeStyle=th.accent2; c.setLineDash([5,4]); c.beginPath(); c.moveTo(X(S.target),Y(2.2)); c.lineTo(X(S.target),gy); c.stroke(); c.setLineDash([]);
+    c.fillStyle=th.accent2; c.font='600 12px "Public Sans",system-ui,sans-serif'; c.textAlign='center';
+    c.fillText('Target '+S.target.toFixed(2)+' m (±'+S.tol.toFixed(2)+')',X(S.target),Y(2.2)-6);
+    c.fillStyle=th.line; c.fillRect(0,gy,W,H-gy);
+    c.strokeStyle=th.ink; c.lineWidth=1.5; c.beginPath(); c.moveTo(0,gy); c.lineTo(W,gy); c.stroke(); c.lineWidth=1;
+    c.fillStyle=th.muted; c.font='11px "Public Sans",system-ui,sans-serif'; c.textAlign='center';
+    for(let x=0;x<=Math.floor(this.xMax);x++){ c.fillText(x+' m',X(x),gy+16); }
+    c.strokeStyle=th.accent; c.lineWidth=1.2;
+    this.trails.forEach((f,i)=>{
+      c.globalAlpha=0.12+0.4*(i+1)/this.trails.length;
+      c.beginPath();
+      for(let k=0;k<=24;k++){ const tt=f.t*k/24; const x=f.xr+f.vx*tt, y=Math.max(0,f.h0+f.vy*tt-0.5*G*tt*tt); if(k===0) c.moveTo(X(x),Y(y)); else c.lineTo(X(x),Y(y)); }
+      c.stroke();
+    });
+    c.globalAlpha=1; c.lineWidth=1;
+    this.marks.forEach((x,i)=>{
+      const hit=Math.abs(x-S.target)<=S.tol;
+      c.fillStyle=hit?th.accent:th.ink; c.globalAlpha=0.35+0.65*(i+1)/this.marks.length;
+      c.beginPath(); c.arc(X(x),gy+22,4,0,7); c.fill();
+    });
+    c.globalAlpha=1;
+    this.drawCatapult(c,th,X,Y,sc);
+    if(this.ball){ c.fillStyle=th.accent2; c.beginPath(); c.arc(X(this.ball.x),Y(this.ball.y),Math.max(4,0.04*sc),0,7); c.fill(); }
+  }
+  drawCatapult(c,th,X,Y,sc){
+    const p=this.p, rad=d=>d*Math.PI/180, ph=p.F/100;
+    const psi=this.psi!=null?this.psi:this.psiStart();
+    const px=0, py=ph;
+    c.fillStyle=th.ink; c.globalAlpha=0.88;
+    c.fillRect(X(-0.42),Y(ph),0.62*sc,ph*sc);
+    c.globalAlpha=1;
+    const ps=rad(this.psiStop());
+    c.strokeStyle=th.accent2; c.setLineDash([3,3]); c.lineWidth=1.3;
+    c.beginPath(); c.moveTo(X(px),Y(py)); c.lineTo(X(px+ARM_L*1.25*Math.cos(ps)),Y(py+ARM_L*1.25*Math.sin(ps))); c.stroke(); c.setLineDash([]);
+    c.fillStyle=th.accent2; c.beginPath(); c.arc(X(px+ARM_L*1.25*Math.cos(ps)),Y(py+ARM_L*1.25*Math.sin(ps)),3.5,0,7); c.fill();
+    const tipx=px+ARM_L*Math.cos(rad(psi)), tipy=py+ARM_L*Math.sin(rad(psi));
+    const rh=ARM_L*(0.28+0.32*(p.C-1));
+    const hx=px+rh*Math.cos(rad(psi)), hy=py+rh*Math.sin(rad(psi));
+    c.strokeStyle=th.muted; c.lineWidth=1.5+0.8*p.E; c.beginPath(); c.moveTo(X(-0.36),Y(Math.min(0.04,ph*0.5))); c.lineTo(X(hx),Y(hy)); c.stroke();
+    c.strokeStyle=th.ink; c.lineWidth=5; c.lineCap='round';
+    c.beginPath(); c.moveTo(X(px),Y(py)); c.lineTo(X(tipx),Y(tipy)); c.stroke();
+    c.lineCap='butt'; c.lineWidth=1;
+    c.fillStyle=th.paper; c.strokeStyle=th.ink; c.lineWidth=2;
+    c.beginPath(); c.arc(X(px),Y(py),4,0,7); c.fill(); c.stroke(); c.lineWidth=1;
+    if(!this.ball){
+      const br=Math.max(3.5,(0.02+0.0006*(p.D-10)+0.0008*p.H)*sc);
+      c.fillStyle=th.accent2; c.beginPath(); c.arc(X(tipx),Y(tipy),br,0,7); c.fill();
+    }
+  }
+}
+
+/* =====================================================================
+   Data stores and tables
+===================================================================== */
+let vPlay,vFact,vTag;
+const ALL_VIEWS=()=>[vPlay,vFact,vTag].filter(Boolean);
+
+function emptyY(n,r,old){
+  return Array.from({length:n},(_,i)=>Array.from({length:r},(_,j)=>(old&&old[i]&&old[i][j]!=null)?old[i][j]:null));
+}
+function shuffle(arr){ for(let i=arr.length-1;i>0;i--){ const j=Math.floor(rng()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; } return arr; }
+function ordFor(t){
+  const st=S[t], n=st.y.length;
+  if(!st.order||st.order.length!==n) st.order=[...Array(n).keys()];
+  return st.order;
+}
+function levelIdx(t,i){
+  if(t==='fact'){ return S.fact.fd.runs[i]; }
+  const des=S.tag.design; return des.assign.map(a=>a.map[des.rows[i][a.col]-1]);
+}
+function settingFor(t,i){
+  const o={}, keys=VK(), idx=levelIdx(t,i);
+  keys.forEach((k,j)=>{ o[k]=S.lv[k][idx[j]]; });
+  return fullParams(o);
+}
+function filledCount(t){ return S[t].y.reduce((s,a)=>s+a.filter(v=>v!=null).length,0); }
+function totalCount(t){ return S[t].y.length*S[t].r; }
+function complete(t){ return totalCount(t)>0&&filledCount(t)===totalCount(t); }
+
+function resetDesigns(){
+  const fd=buildFactDesign(); S.fact.fd=fd;
+  S.fact.tooBig=fd.keys.length>0&&fd.R>MAXRUNS;
+  S.fact.y=(fd.keys.length===0||S.fact.tooBig)?[]:emptyY(fd.R,S.fact.r);
+  S.fact.order=null; S.fact.conf=[]; S.fact.rec=null; S.fact.cur=null;
+  const td=tagDesign(); S.tag.design=td;
+  S.tag.y=td?emptyY(td.N,S.tag.r):[]; S.tag.order=null; S.tag.conf=[]; S.tag.rec=null; S.tag.cur=null;
+}
+
+function levelCls(n,l){ return n===2?(l?'l2':'l0'):'l'+l; }
+function buildTable(t){
+  const st=S[t], keys=VK();
+  if(!keys.length) return '<p class="u" style="padding:12px">Every factor has one level, so nothing varies. Give at least one factor 2 or 3 levels.</p>';
+  if(t==='fact'&&st.tooBig) return '<p class="u" style="padding:12px">A forced full factorial of these factors and levels needs '+st.fd.R+' runs, above the '+MAXRUNS+' the lab allows. Set the design to Auto to use a fractional factorial instead, or use the Taguchi array (tab 4), which needs only '+(S.tag.design?S.tag.design.N:'?')+' runs.</p>';
+  const n=st.y.length, ord=ordFor(t), r=st.r, cr=st.cur==null?ord[0]:st.cur;
+  let h='<table class="t"><thead><tr><th>Run</th><th>'+(t==='fact'?'Std':'Exp')+'</th>';
+  keys.forEach(k=>{ h+='<th title="'+esc(DEF[k].name)+'">'+k+'</th>'; });
+  for(let j=0;j<r;j++) h+='<th>Shot '+(j+1)+' (m)</th>';
+  h+='<th>Mean</th><th>s</th>'+(t==='tag'?'<th>S/N (dB)</th>':'')+'</tr></thead><tbody>';
+  ord.forEach((i,pos)=>{
+    const idx=levelIdx(t,i);
+    h+='<tr'+(i===cr?' class="rcur"':'')+'><td>'+(pos+1)+'</td><td>'+(i+1)+'</td>';
+    keys.forEach((k,j)=>{ h+='<td class="'+levelCls(S.lv[k].length,idx[j])+'">'+esc(fmtVal(k,S.lv[k][idx[j]]))+'</td>'; });
+    for(let j=0;j<r;j++){
+      const v=st.y[i][j];
+      h+='<td><input type="number" step="any" class="yin" data-t="'+t+'" data-i="'+i+'" data-j="'+j+'" value="'+(v==null?'':v)+'" aria-label="Run '+(pos+1)+' shot '+(j+1)+'"></td>';
+    }
+    h+='<td id="'+t+'-mean-'+i+'"></td><td id="'+t+'-sd-'+i+'"></td>'+(t==='tag'?'<td id="tag-sn-'+i+'"></td>':'')+'</tr>';
+  });
+  return h+'</tbody></table>';
+}
+function renderPlan(){
+  const keys=VK(), fd=S.fact.fd, td=S.tag.design;
+  const f=document.getElementById('factPlan'), g=document.getElementById('tagPlan');
+  if(f) f.innerHTML=keys.length?'<span>Design <b>'+esc(fd.label)+'</b></span>'+(fd.full?'':'<span>Resolution <b>'+resName(fd.res)+'</b></span>')+'<span>Runs <b>'+fd.R+'</b>'+(fd.full?'':' <span class="u">(full: '+fd.fullR+')</span>')+'</span><span>Shots <b>'+(S.fact.tooBig?'–':fd.R*S.fact.r)+'</b></span>':'<span class="u">No factor varies yet.</span>';
+  const fw=document.getElementById('factWhy'); if(fw) fw.textContent=keys.length&&!S.fact.tooBig?fd.why+(fd.check?' '+fd.check:''):'';
+  const tw=document.getElementById('tagWhy'); if(tw) tw.textContent=td?td.why+' '+td.check:'';
+  const tx=document.getElementById('tagWarn');
+  if(tx) tx.innerHTML=(td&&td.dummies&&td.dummies.length)?'<b>Screening design, not balanced.</b> Factor'+(td.dummies.length>1?'s ':' ')+esc(td.dummies.join(', '))+' use three-level columns, so they are estimated unevenly. '+(td.balAlt?'Set <b>Mixed-level balance</b> to "Exactly balanced" to use '+esc(td.balAlt.name)+' ('+td.balAlt.N+' runs) instead.':''):'';
+  if(g) g.innerHTML=td?'<span>Array <b>'+td.name+'</b></span><span>Runs <b>'+td.N+'</b></span><span>Shots <b>'+(td.N*S.tag.r)+'</b></span><span>Spare columns (error) <b>'+td.unused.length+'</b></span>':'<span class="u">No factor varies yet.</span>';
+}
+function renderTable(t){
+  document.getElementById(t==='fact'?'factTable':'tagTable').innerHTML=buildTable(t);
+  S[t].y.forEach((_,i)=>updateRow(t,i));
+  updateProg(t); renderPlan(); renderLevels();
+}
+function updateRow(t,i){
+  const m=document.getElementById(t+'-mean-'+i), s=document.getElementById(t+'-sd-'+i);
+  if(!m) return;
+  const ys=S[t].y[i].filter(v=>v!=null), full=ys.length===S[t].r;
+  m.textContent=ys.length?fmt(mean(ys),3):'';
+  s.textContent=ys.length>1?fmt(sd(ys),3):'';
+  if(t==='tag'){
+    const e=document.getElementById('tag-sn-'+i);
+    const issue=full?snIssue(S.tag.type,ys,S.target):null; e.textContent=full?(issue?'n/a':fmt(snRatio(S.tag.type,ys,S.target),2)):''; e.title=issue?('S/N undefined: '+issue):'';
+  }
+}
+function updateProg(t){
+  const e=document.getElementById(t==='fact'?'factProg':'tagProg');
+  const nb=document.querySelectorAll('input.yin.bad[data-t="'+t+'"]').length;
+  e.textContent=filledCount(t)+' of '+totalCount(t)+' shots recorded'+(nb?' ('+nb+' entr'+(nb>1?'ies':'y')+' rejected: distances must be positive numbers in metres)':'');
+}
+function nextEmpty(t){
+  const ord=ordFor(t), st=S[t];
+  for(const i of ord) for(let j=0;j<st.r;j++) if(st.y[i][j]==null) return [i,j];
+  return null;
+}
+function setCell(t,i,j,v){
+  S[t].y[i][j]=v;
+  const el=document.querySelector('input.yin[data-t="'+t+'"][data-i="'+i+'"][data-j="'+j+'"]');
+  if(el){ el.value=v==null?'':v; el.classList.remove('bad'); el.title=''; }
+  updateRow(t,i);
+}
+const roundCm=d=>Math.round(d*100)/100;
+const DIST_MAX=1000;
+const validDistance=v=>typeof v==='number'&&isFinite(v)&&v>0&&v<=DIST_MAX;
+/* A typed response must be a positive number of metres. Invalid entries are stored as empty, marked red, and explained on commit. */
+function acceptDistance(el,v,loud){
+  if(v==null||isNaN(v)){ el.classList.remove('bad'); el.title=''; return null; }
+  if(!validDistance(v)){ el.classList.add('bad'); el.title='A distance must be a positive number in metres (at most '+DIST_MAX+' m)'; if(loud) toast('Rejected '+v+': a distance must be a positive number in metres.'); return null; }
+  el.classList.remove('bad'); el.title=''; return v;
+}
+function fireNext(t){
+  if(!S[t].y.length){ toast('Nothing to run: check the factors and levels.'); return; }
+  let nx=null;
+  if(S[t].manual&&S[t].cur!=null){ const ci=S[t].cur, cj=S[t].y[ci].findIndex(v=>v==null); if(cj>=0) nx=[ci,cj]; else toast('That run already has all its shots: firing the next empty run.'); }
+  if(!nx) nx=nextEmpty(t);
+  if(!nx){ toast('All shots are recorded.'); return; }
+  const [i,j]=nx, p=settingFor(t,i), view=t==='fact'?vFact:vTag;
+  const s=shotAt(p), d=roundCm(s.dist);
+  if(REDUCE) view.addInstant(p,s); else view.fire(p,s);
+  setCell(t,i,j,d); S[t].cur=i; if(!S[t].y[i].some(v=>v==null)) S[t].manual=false; renderTable(t); scheduleAnalysis(t);
+}
+function fireAll(t){
+  if(!S[t].y.length){ toast('Nothing to run: check the factors and levels.'); return; }
+  const view=t==='fact'?vFact:vTag; let n=0, last=null, nx;
+  while((nx=nextEmpty(t))){
+    const [i,j]=nx, p=settingFor(t,i), s=shotAt(p);
+    setCell(t,i,j,roundCm(s.dist)); view.addInstant(p,s); n++; last=p; S[t].cur=i;
+  }
+  if(last){ view.setParams(last); S[t].manual=false; renderTable(t); }
+  updateProg(t); scheduleAnalysis(t);
+  if(!n) toast('All shots are recorded.');
+}
+function clearData(t){
+  const st=S[t]; st.y=emptyY(st.y.length,st.r); st.conf=[]; st.rec=null; st.cur=null; renderLevels(); renderTable(t); renderResults(t); renderCompare();
+}
+let anTimer={};
+function scheduleAnalysis(t){
+  clearTimeout(anTimer[t]);
+  anTimer[t]=setTimeout(()=>{ renderResults(t); renderCompare(); },280);
+}
+
+/* =====================================================================
+   Factor and level editor
+===================================================================== */
+function lockedLevels(){ return filledCount('fact')>0||filledCount('tag')>0; }
+function curLevels(t){
+  const st=S[t]; if(!t||!st.y.length) return null;
+  const run=st.cur==null?ordFor(t)[0]:st.cur;
+  const keys=VK(), idx=levelIdx(t,run), o={};
+  AK().forEach(k=>{ if(S.lv[k].length===1) o[k]=S.lv[k][0]; });
+  keys.forEach((k,j)=>{ o[k]=S.lv[k][idx[j]]; });
+  return o;
+}
+function curCaption(t){
+  const st=S[t];
+  if(!t||!st.y.length) return '';
+  const run=st.cur==null?ordFor(t)[0]:st.cur, pos=ordFor(t).indexOf(run)+1, tag=(t==='fact'?'std ':'exp ')+(run+1);
+  const lock=lockedLevels()?' Locked: shots are recorded. Press Clear data to change the factors or levels.':'';
+  return 'Green: the level used by run '+pos+' ('+tag+')'+(st.cur==null?', the next run to fire':', the run last fired')+'. Click a level to set the run: the highlighted table row and Fire follow it.'+lock;
+}
+function levelsHTML(t){
+  const cur=curLevels(t);
+  let h='<div class="row" style="margin-bottom:8px"><label>Number of factors <select id="nfSel">'+[2,3,4,5,6,7,8].map(n=>'<option'+(S.nf===n?' selected':'')+'>'+n+'</option>').join('')+'</select></label></div>';
+  h+='<div style="overflow-x:auto"><table class="lvt"><thead><tr><th>Factor</th><th>Levels</th><th>Level 1</th><th>Level 2</th><th>Level 3</th></tr></thead><tbody>';
+  AK().forEach(k=>{
+    const d=DEF[k], lv=S.lv[k];
+    h+='<tr><th scope="row"><b>'+k+'</b> '+esc(d.name)+(d.unit?' <span class="u">('+esc(d.unit.trim())+')</span>':'')+'</th>';
+    if(d.type==='cont'){
+      h+='<td><select class="lvn" data-k="'+k+'" aria-label="Number of levels for '+esc(d.name)+'">'+[1,2,3].map(n=>'<option'+(lv.length===n?' selected':'')+'>'+n+'</option>').join('')+'</select></td>';
+      for(let i=0;i<3;i++){
+        h+=i<lv.length?'<td style="white-space:nowrap"><button type="button" class="pk tog use'+(cur&&cur[k]===lv[i]?' on':'')+'" data-lvpick="'+k+'" data-i="'+i+'" aria-pressed="'+(!!(cur&&cur[k]===lv[i]))+'" title="Use this level for the run">L'+(i+1)+'</button> <input type="number" class="lvin'+(cur&&cur[k]===lv[i]?' cur':'')+'" data-k="'+k+'" data-i="'+i+'" value="'+lv[i]+'" min="'+d.min+'" max="'+d.max+'" step="'+d.step+'" aria-label="'+esc(d.name)+' level '+(i+1)+'"></td>':'<td class="u">–</td>';
+      }
+    } else {
+      h+='<td><select class="lvn" data-k="'+k+'" aria-label="Number of levels for '+esc(d.name)+'">'+[1,2,3].map(n=>'<option'+(lv.length===n?' selected':'')+'>'+n+'</option>').join('')+'</select></td>';
+      for(let i=0;i<3;i++){
+        const on=lv.includes(d.opts[i]);
+        h+='<td><button type="button" class="tog'+(on?' use':'')+(cur&&cur[k]===d.opts[i]?' on':'')+'" data-lvtog="'+k+'" data-i="'+i+'" aria-pressed="'+(!!(cur&&cur[k]===d.opts[i]))+'">'+(on?'L'+(lv.indexOf(d.opts[i])+1)+' · ':'')+esc(d.labels[i])+'</button></td>';
+      }
+    }
+    h+='</tr>';
+  });
+  const out=h+'</tbody></table></div><p class="u" style="margin:6px 0 0">'+curCaption(t)+'</p>';
+  if(!lockedLevels()) return out;
+  return out.replace(/<(select|input) /g,'<$1 disabled ').replace(/<button type="button" class="tog(?! use)([^"]*)"/g,'<button type="button" disabled class="tog$1"');
+}
+function renderLevels(){ document.querySelectorAll('.lvEditor').forEach(e=>{ e.innerHTML=levelsHTML(e.dataset.t); }); }
+function defaultLevels(k,n){
+  const o=DEF[k].opts;
+  return n===1?[o[1]]:(n===2?[o[0],o[2]]:o.slice());
+}
+function applyDesignChange(msg){
+  resetDesigns(); renderLevels(); buildSliders();
+  renderTable('fact'); renderTable('tag'); renderResults('fact'); renderResults('tag'); renderCompare();
+  if(msg) toast(msg);
+}
+function getPick(k){
+  if(!S.pick) S.pick={};
+  if(!S.pick[k]) S.pick[k]=DEF[k].opts.map((o,i)=>i).filter(i=>S.lv[k].includes(DEF[k].opts[i]));
+  return S.pick[k];
+}
+function onLevelCount(el){
+  if(lockedLevels()){ renderLevels(); return; }
+  const k=el.dataset.k, n=parseInt(el.value,10);
+  if(DEF[k].type==='disc'){
+    let pk=getPick(k).slice();
+    if(pk.length>n) pk=pk.slice(pk.length-n);
+    for(let i=0;i<3&&pk.length<n;i++) if(!pk.includes(i)) pk.push(i);
+    S.pick[k]=pk; S.lv[k]=pk.map(i=>DEF[k].opts[i]).sort((a,b)=>a-b);
+  } else S.lv[k]=defaultLevels(k,n);
+  applyDesignChange('Levels changed: recorded shots were cleared.');
+}
+function onLevelValue(el){
+  if(lockedLevels()){ renderLevels(); return; }
+  const k=el.dataset.k, i=+el.dataset.i, d=DEF[k]; let v=parseFloat(el.value);
+  if(isNaN(v)){ renderLevels(); return; }
+  v=clamp(v,d.min,d.max);
+  const nv=S.lv[k].slice(); nv[i]=v;
+  if(new Set(nv).size!==nv.length){ toast('Each level must have a different value.'); renderLevels(); return; }
+  nv.sort((a,b)=>a-b); S.lv[k]=nv;
+  applyDesignChange('Levels changed: recorded shots were cleared.');
+}
+function pickLevel(t,k,idx){
+  const st=S[t];
+  if(!st.y.length){ toast(t==='fact'&&st.tooBig?'A forced full factorial is too large ('+st.fd.R+' runs, limit '+MAXRUNS+'), so there are no runs to select. Set the design to Auto for a fractional factorial.':'No factor varies, so there is no run to select.'); return; }
+  const keys=VK(), fi=keys.indexOf(k); if(fi<0) return;
+  const run0=st.cur==null?ordFor(t)[0]:st.cur;
+  const want=levelIdx(t,run0).slice(); want[fi]=idx;
+  let best=-1, bd=1e9;
+  for(let i=0;i<st.y.length;i++){
+    const d=levelIdx(t,i); if(d[fi]!==idx) continue;
+    let dist=0; for(let j=0;j<want.length;j++) if(d[j]!==want[j]) dist++;
+    if(dist<bd){ bd=dist; best=i; if(dist===0) break; }
+  }
+  if(best<0) return;
+  st.cur=best; st.manual=true;
+  if(bd>0) toast('This '+(t==='fact'?'fractional factorial':S.tag.design.name+' array')+' has no run with that exact combination: showing the closest run.');
+  const view=t==='fact'?vFact:vTag; if(view) view.setParams(settingFor(t,best));
+  renderTable(t);
+}
+function onToggle(tg){
+  const k=tg.dataset.lvtog, i=+tg.dataset.i, d=DEF[k];
+  let pk=getPick(k).slice();
+  if(pk.includes(i)){ pickLevel(tg.closest('.lvEditor').dataset.t,k,S.lv[k].indexOf(d.opts[i])); return; }
+  if(lockedLevels()){ toast('Levels are locked while shots are recorded. Press Clear data to change them.'); return; }
+  pk.push(i);
+  if(pk.length>S.lv[k].length) pk=pk.slice(pk.length-S.lv[k].length);
+  S.pick[k]=pk; S.lv[k]=pk.map(x=>d.opts[x]).sort((a,b)=>a-b);
+  applyDesignChange('Levels changed: recorded shots were cleared.');
+}
+
+/* =====================================================================
+   Factorial results
+===================================================================== */
+function renderResults(t){ if(t==='fact') renderFact(); else renderTag(); }
+function placeholder(t){
+  return '<div class="panel flat"><p class="u">Record all '+totalCount(t)+' shots to see the analysis ('+filledCount(t)+' done). Use <b>Run all remaining</b> to simulate the rest, or type your own measurements into the table.</p></div>';
+}
+function factErrLabel(an){
+  if(an.mode==='none') return 'No error estimate is available (one replicate and fewer than three varied factors), so terms are ranked by % contribution only';
+  if(an.mode==='pure') return 'Pure error from replicates ('+an.dfE+' df)';
+  if(an.frac) return 'Pooled unmodelled higher-order terms'+(an.r>=2?' plus replicates':'')+' ('+an.dfE+' df)';
+  return 'Pooled 3-factor and higher interactions'+(an.r>=2?' plus replicates':'')+' ('+an.dfE+' df)';
+}
+const lvLab=(k,l)=>fmtVal(k,S.lv[k][l]);
+function designNote(fd,an){
+  if(fd.full) return '';
+  const al=an.aliasGroups||[];
+  return '<div class="note info"><b>'+esc(fd.label)+'.</b> '+esc(fd.why)+(fd.check?' '+esc(fd.check):'')
+    +'<br>Estimability: of '+(an.dfPossible!=null?an.dfPossible:'?')+' degrees of freedom in all main effects and two-factor interactions, '+(an.dfModel!=null?an.dfModel:'?')+' can be estimated'+(an.dfPossible>an.dfModel?' (the other '+(an.dfPossible-an.dfModel)+' are aliased with terms already in the model)':'')+', and '+(an.dfLeft!=null?an.dfLeft:'?')+' are left over for error. Where terms are aliased, the first-listed term (main effects first, then pairs in factor order) gets the credit and the others cannot be separated from it'+(al.length?': '+esc(al.slice(0,8).join(', '))+(al.length>8?' and '+(al.length-8)+' more':''):'')+'.</div>';
+}
+
+function renderFact(){
+  const box=document.getElementById('factResults'), st=S.fact;
+  if(!VK().length||st.tooBig||!complete('fact')){
+    box.innerHTML=(!VK().length||st.tooBig)?'':placeholder('fact'); st.rec=null; return;
+  }
+  const fd=st.fd, keys=fd.keys, ns=fd.ns, r=st.r;
+  const anM=analyzeAny(st.y,fd,S.alpha,st.err);
+  const lnsData=r>=2?st.y.map(a=>[Math.log(Math.max(sd(a),1e-6))]):null;
+  const anL=lnsData?analyzeAny(lnsData,fd,S.alpha,'pool3'):null;
+  if(st.view==='lns'&&!anL) st.view='mean';
+  const isL=st.view==='lns', an=isL?anL:anM;
+
+  const cand=searchFact(anM,anL,st.goal,S.target,S.tol/2);
+  const bst=cand[0], setv={};
+  keys.forEach((k,f)=>{ setv[k]=S.lv[k][bst.d[f]]; });
+  const vals=fullParams(setv);
+  const modelMasks=anM.terms.filter(t=>!t.pooled).map(t=>t.mask);   /* all candidate terms: selecting terms by p-value must not shrink the variance */
+  let hLev=null, optimistic=false, predNote=null;
+  if(!anM.noErr){
+    hLev=leverage(fd.runs.map(d=>factorialRow(modelMasks,ns,d)),factorialRow(modelMasks,ns,bst.d));
+    if(!isFinite(hLev)){
+      const sigMasks=anM.terms.filter(t=>t.sig).map(t=>t.mask);
+      hLev=leverage(fd.runs.map(d=>factorialRow(sigMasks,ns,d)),factorialRow(sigMasks,ns,bst.d)); optimistic=true;
+      if(!isFinite(hLev)){ hLev=null; predNote='this setting cannot be estimated separately from aliased terms'; }
+    }
+  }
+  const rec={vals,predMean:bst.ym,predSd:anL?Math.exp(bst.lns):null,predVar:(hLev==null)?null:anM.mse*hLev/anM.r,dfE:anM.dfE,optimistic,predNote,tuned:false,key:JSON.stringify(vals)};
+  if(!st.rec||st.rec.key!==rec.key) st.conf=[];
+  st.rec=rec;
+
+  let h='<div class="panel flat"><h2>Results</h2>'+designNote(fd,anM)+'<div class="row" style="margin-bottom:8px">';
+  if(anL) h+='<span class="seg" role="group" aria-label="Response to analyze"><button data-act="fact-view" data-v="mean" aria-pressed="'+(!isL)+'">Distance (mean)</button><button data-act="fact-view" data-v="lns" aria-pressed="'+isL+'">Variation (ln s)</button></span>';
+  if(!isL) h+='<label class="row">Error estimate <select id="factErr"><option value="auto"'+(st.err==='auto'?' selected':'')+'>Auto</option><option value="pure"'+(st.err==='pure'?' selected':'')+'>Replicates only</option><option value="pool3"'+(st.err==='pool3'?' selected':'')+'>Pool 3-factor and higher</option></select></label>';
+  h+='</div>';
+  if(isL) h+='<div class="note info">This view analyses <b>ln(s)</b> of each run: how much the spread changes. A positive effect means the spread grows at the higher level (exp(effect) is the ratio of spreads).</div>';
+  if(an.noErr) h+='<div class="note">'+esc(factErrLabel(an))+'. Terms with at least 5% contribution are marked as important.</div>';
+
+  const nsig=an.terms.filter(x=>x.sig).length;
+  h+='<div class="kpis">'
+   +'<div class="kpi"><b>'+(r*fd.R)+'</b><span>shots in the experiment</span></div>'
+   +'<div class="kpi"><b>'+fmt(an.grand,3)+(isL?'':' m')+'</b><span>grand mean'+(isL?' of ln s':'')+'</span></div>'
+   +'<div class="kpi"><b>'+nsig+' of '+an.terms.length+'</b><span>terms '+(an.noErr?'important':'significant at α = '+S.alpha)+'</span></div>'
+   +'<div class="kpi"><b>'+fmt(an.r2*100,1)+'%</b><span>variation explained by those terms</span></div>'
+   +(an.sigma!=null&&!isL?'<div class="kpi"><b>'+fmt(an.sigma,3)+' m</b><span>shot-to-shot σ (pure error)</span></div>':'')
+   +'</div>';
+  if(!an.noErr) h+='<p class="u">Error estimate: '+factErrLabel(an)+'.'+(an.terms.length>=10?' With '+an.terms.length+' terms tested at α = '+S.alpha+', about '+(an.terms.length*S.alpha).toFixed(1)+' will look significant by chance alone: confirm surprising ones with a confirmation run.':'')+'</p>';
+
+  if(!isL&&r>=2){ const bt=bartlett(st.y); if(bt&&bt.p<S.alpha) h+='<div class="note"><b>The scatter is not equal across runs</b> (Bartlett test, p '+fmtP(bt.p)+'). The ANOVA assumes equal variance, so its p-values are approximate here. In this catapult the scatter depends on the factors; the Variation (ln s) view shows which ones.</div>'; }
+  if(an.mode==='pool3') h+='<div class="note"><b>These p-values rely on pooled higher-order terms, not independent replication.</b> In this simulator the factors multiply, so higher-order interactions are not negligible. Treat significance here as screening evidence and confirm it.</div>';
+  h+='<h3 style="margin-top:14px">Pareto chart of contributions</h3><p class="u">Teal bars are significant terms; grey bars are not. Orange bars are significant but aliased with other terms, so this design cannot say which of them is responsible.</p>'+paretoSVG(an.terms);
+
+  const sorted=[...an.terms].sort((a,b)=>b.ss-a.ss), SHOW=24;
+  h+='<h3 style="margin-top:16px">ANOVA'+(sorted.length>SHOW?' (top '+SHOW+' of '+sorted.length+' terms)':'')+'</h3><div class="tblwrap"><table class="t"><thead><tr><th>Term</th><th>df</th><th>SS</th><th>MS</th><th>F</th><th>p-value</th><th>% contribution</th><th>Effect ± CI</th><th>Verdict</th></tr></thead><tbody>';
+  const seEff=(!an.noErr&&an.dfE>0&&an.mse>0)?Math.sqrt(4*an.mse/(an.R*an.r)):null, tc=seEff?tCrit(an.dfE,S.alpha):null;
+  const ciText=x=>(x.effect!=null&&seEff)?signed(x.effect,3)+' ± '+(tc*seEff).toFixed(3):'–';
+  const isAl=x=>!!((x.aliasWith&&x.aliasWith.length)||x.partial);
+  const alText=x=>(x.aliasWith&&x.aliasWith.length)?' <span class="pill warn" title="This design cannot separate these effects">aliased with '+esc(x.aliasWith.join(', '))+'</span>':(x.partial?' <span class="pill warn" title="Only part of this term can be estimated; the rest is aliased with terms entered earlier">partly aliased: '+x.df+' of '+x.dfFull+' df estimable'+(x.partial!=='other terms'?' (with '+esc(x.partial)+')':'')+'</span>':'');
+  sorted.slice(0,SHOW).forEach(x=>{
+    h+='<tr class="'+(x.sig?'sig':(x.pooled?'pooled':''))+'"><td>'+esc(x.name)+'</td><td>'+x.df+'</td><td>'+fmt(x.ss,4)+'</td><td>'+fmt(x.ms,4)+'</td><td>'+(x.F==null?'–':(isFinite(x.F)?fmt(x.F,1):'∞'))+'</td><td>'+fmtP(x.p)+'</td><td>'+fmt(x.pct,1)+'</td><td>'+ciText(x)+'</td><td>'+(x.pooled?'<span class="pill no">pooled into error</span>':(x.sig?(isAl(x)?'<span class="pill warn">significant, not identifiable</span>':'<span class="pill ok">'+(an.noErr?'important':'significant')+'</span>'):'<span class="pill no">not significant</span>'))+alText(x)+'</td></tr>';
+  });
+  if(!an.noErr) h+='<tr><td>Error</td><td>'+an.dfE+'</td><td>'+fmt(an.ssE,4)+'</td><td>'+fmt(an.mse,4)+'</td><td></td><td></td><td>'+fmt(an.ssTot>0?100*an.ssE/an.ssTot:0,1)+'</td><td></td><td></td></tr>';
+  h+='<tr><td>Total</td><td></td><td>'+fmt(an.ssTot,4)+'</td><td></td><td></td><td></td><td>100</td><td></td><td></td></tr></tbody></table></div>';
+  h+='<p class="u">Effect ± CI is the change from the low to the high level with a '+Math.round((1-S.alpha)*100)+'% confidence interval, shown for two-level terms when an error estimate exists. Significance is evidence, not proof: confirm before relying on it.</p>';
+
+  /* main effects */
+  const lm=keys.map((k,f)=>levelMeansOf(an,f)), allM=[an.grand]; lm.forEach(a=>allM.push(...a));
+  const yr=niceRange(allM);
+  h+='<h3 style="margin-top:18px">Main effects plots</h3><p class="u">A steep line means a strong effect. The dashed line is the grand mean.</p><div class="plots">';
+  keys.forEach((k,f)=>{
+    const tm=an.terms.find(x=>x.mask===(1<<f));
+    h+='<div class="pl">'+linePanel({title:k+'  '+DEF[k].name,sub:fmt(tm.pct,1)+'% of variation'+(tm.sig?'  (significant)':''),xl:S.lv[k].map((_,l)=>lvLab(k,l)),series:[{v:lm[f]}],y:yr,hl:an.grand})+'</div>';
+  });
+  h+='</div>';
+
+  /* interactions: strongest two-factor terms */
+  const two=an.terms.filter(x=>x.order===2).sort((a,b)=>b.ss-a.ss).slice(0,6);
+  if(two.length){
+    const plots=two.map(tm=>{
+      const f=[...Array(keys.length).keys()].filter(i=>(tm.mask>>i)&1);
+      return {tm,f:f[0],g:f[1],m:cellMeansOf(an,f[0],f[1])};
+    });
+    const allC=[]; plots.forEach(p=>p.m.forEach(row=>allC.push(...row)));
+    const yr2=niceRange(allC);
+    h+='<h3 style="margin-top:18px">Interaction plots'+(two.length<an.terms.filter(x=>x.order===2).length?' (strongest '+two.length+')':'')+'</h3><p class="u">Parallel lines mean no interaction. Lines that cross or fan out mean the effect of one factor depends on the other. Only trust interactions marked significant, and treat even those as evidence to confirm.</p><div class="plots">';
+    plots.forEach(p=>{
+      const kf=keys[p.f], kg=keys[p.g];
+      const series=S.lv[kg].map((_,b)=>({v:p.m.map(row=>row[b]),name:kg+' '+(b+1),c:b}));
+      h+='<div class="pl">'+linePanel({title:kf+' × '+kg,sub:fmt(p.tm.pct,1)+'% of variation'+(p.tm.sig?'  (significant)':''),xl:S.lv[kf].map((_,l)=>lvLab(kf,l)),xt:kf+' level',series,y:yr2,badge:p.tm.sig?'significant':''})+'</div>';
+    });
+    h+='</div>';
+  }
+
+  /* equation (two-level designs only) */
+  if(ns.every(n=>n===2)){
+    const sigT=[...an.terms].filter(x=>x.sig&&x.coef!=null).sort((a,b)=>Math.abs(b.coef)-Math.abs(a.coef)).slice(0,10);
+    const eq=(isL?'ln s':'ŷ')+' = '+fmt(an.grand,3)+sigT.map(x=>' '+(x.coef>=0?'+':'−')+' '+Math.abs(x.coef).toFixed(3)+'·'+x.name.replace(/×/g,'·')).join('');
+    h+='<h3 style="margin-top:18px">Prediction equation (coded units −1 / +1)</h3><span class="formula">'+esc(eq)+'</span>';
+  }
+
+  h+='<h3 style="margin-top:18px">What the experiment says</h3>'+factText(an,isL);
+
+  h+='<div class="panel" style="margin-top:18px"><h3>Recommended setting</h3>'
+   +'<div class="row" style="margin-bottom:8px"><label class="row">Goal <select id="factGoal"><option value="target"'+(st.goal==='target'?' selected':'')+'>Hit the target distance</option><option value="max"'+(st.goal==='max'?' selected':'')+'>Maximise distance</option><option value="min"'+(st.goal==='min'?' selected':'')+'>Minimise distance</option></select></label></div>'
+   +'<div class="stat"><span class="big">'+esc(settingText(rec.vals))+'</span></div>'
+   +'<div class="stat"><span>Predicted mean <b>'+fmt(rec.predMean,2)+' m</b></span>'+(rec.predSd!=null?'<span>Predicted shot-to-shot s <b>≈ '+fmt(rec.predSd,2)+' m</b></span>':'')+'</div>'
+   +'<p class="u">'+(fd.full?'Chosen from the tested level combinations. ':'Chosen from all level combinations using the fitted model, so it may not be one of the runs you fired; the confirmation run is what tests it. ')+(anL?'Where several reach the target, the one with the smallest predicted spread (from the ln s analysis) was chosen.':'With one replicate there is no spread information, so the choice ignores repeatability.')+'</p>'
+   +'<div id="factConfirm"></div></div></div>';
+  box.innerHTML=h;
+  renderConfirm('fact');
+}
+function factText(an,isL){
+  const sig=an.terms.filter(x=>x.sig).sort((a,b)=>b.pct-a.pct);
+  const mains=sig.filter(x=>x.order===1), ints=sig.filter(x=>x.order===2), hi=sig.filter(x=>x.order>=3);
+  const non=an.terms.filter(x=>x.order===1&&!x.sig&&!x.pooled);
+  let h='<ul class="clean">';
+  if(!sig.length) h+='<li>No term is significant. The noise is larger than any factor effect: add replicates, widen the levels or reduce the noise.</li>';
+  mains.forEach(x=>{
+    const f=Math.log2(x.mask), k=an.keys[f], lm=levelMeansOf(an,f);
+    const lab=lm.map((v,l)=>lvLab(k,l)+' → '+(isL?fmt(Math.exp(v),2)+' (s)':fmt(v,2)+' m')).join('; ');
+    h+='<li><b>'+k+' ('+esc(DEF[k].name)+')</b> explains '+fmt(x.pct,1)+'% of the variation. Level averages: '+esc(lab)+'.'+((x.aliasWith&&x.aliasWith.length)?' Caution: in this design it is aliased with '+esc(x.aliasWith.join(', '))+', so the effect cannot be attributed to this factor alone.':'')+'</li>';
+  });
+  ints.forEach(x=>{
+    const [a,b]=x.name.split('×');
+    h+='<li><b>'+esc(x.name)+' interaction</b> (p '+fmtP(x.p)+'): the effect of '+a+' ('+esc(DEF[a].name)+') changes with '+b+' ('+esc(DEF[b].name)+'). Choose them together, not one at a time.'+((x.aliasWith&&x.aliasWith.length)?' Caution: this design cannot separate it from '+esc(x.aliasWith.join(', '))+'.':'')+'</li>';
+  });
+  if(hi.length) h+='<li>Higher-order interaction(s) '+esc(hi.slice(0,6).map(x=>x.name).join(', '))+' are significant too. This is typical when effects multiply, as they do in this physics.</li>';
+  if(non.length) h+='<li>'+esc(non.map(x=>x.name).join(', '))+' did not show a significant effect over the tested levels: set '+(non.length>1?'them':'it')+' for cost, safety or convenience.</li>';
+  return h+'</ul>';
+}
+
+/* =====================================================================
+   Taguchi results
+===================================================================== */
+function respTable(resp,unit,d){
+  let h='<div class="tblwrap"><table class="t"><thead><tr><th>'+unit+'</th>';
+  resp.fac.forEach(f=>{ h+='<th>'+f.key+'</th>'; });
+  h+='</tr></thead><tbody>';
+  for(let l=0;l<3;l++){
+    if(!resp.fac.some(f=>f.n>l)) continue;
+    h+='<tr><td>Level '+(l+1)+'</td>'+resp.fac.map(f=>'<td>'+(f.n>l?fmt(f.m[l],d):'–')+'</td>').join('')+'</tr>';
+  }
+  h+='<tr class="sig"><td>Delta</td>'+resp.fac.map(f=>'<td>'+fmt(f.delta,d)+'</td>').join('')+'</tr>';
+  h+='<tr><td>Rank</td>'+resp.fac.map(f=>'<td>'+f.rank+'</td>').join('')+'</tr></tbody></table></div>';
+  return h;
+}
+function anovaTable(resp){
+  const rows=[...resp.fac].sort((a,b)=>b.ss-a.ss);
+  let h='<div class="tblwrap"><table class="t"><thead><tr><th>Source</th><th>df</th><th>SS</th><th>F</th><th>p-value</th><th>% contribution</th><th>Status</th></tr></thead><tbody>';
+  rows.forEach(f=>{
+    const sig=f.p!=null&&f.p<S.alpha;
+    h+='<tr class="'+(f.pooled?'pooled':(sig?'sig':''))+'"><td>'+f.key+' '+esc(DEF[f.key].name)+'</td><td>'+f.df+'</td><td>'+fmt(f.ss,3)+'</td><td>'+(f.F==null?'–':(isFinite(f.F)?fmt(f.F,1):'∞'))+'</td><td>'+fmtP(f.p)+'</td><td>'+fmt(f.pct,1)+'</td><td>'+(f.pooled?'<span class="pill no">pooled</span>':(sig?'<span class="pill ok">significant</span>':'<span class="pill warn">kept</span>'))+'</td></tr>';
+  });
+  h+='<tr><td>Error (spare columns + pooled)</td><td>'+resp.dfE+'</td><td>'+fmt(resp.ssE,3)+'</td><td></td><td></td><td>'+fmt(resp.errPct,1)+'</td><td></td></tr>';
+  h+='<tr><td>Total</td><td></td><td>'+fmt(resp.sst,3)+'</td><td></td><td></td><td>100</td><td></td></tr></tbody></table></div>';
+  return h;
+}
+const TYPE_LABEL={ntb:'Nominal is best',msd:'Hit the target',ltb:'Larger is better',stb:'Smaller is better'};
+/* Prediction variance of the mean model at the recommended setting. Uses every factor column (pooling must not shrink it),
+   the spare-column error estimate when the array has spare columns, and the interpolated row for a tuned factor. */
+function tagPredVar(an,des,opt){
+  const fac=an.mean.fac;
+  const row=dl=>{ const r2=[1]; fac.forEach((f,fi)=>{ for(let c=0;c<f.n-1;c++) r2.push(conVal(f.n,c,dl[fi])); }); return r2; };
+  const mseUse=an.mean.mseSpare!=null?an.mean.mseSpare:an.mean.mse, dfUse=an.mean.mseSpare!=null?an.mean.dfSpare:an.mean.dfE;
+  if(mseUse==null) return {predVar:null,dfE:dfUse,optimistic:true};
+  const X=des.rows.map(r0=>row(des.assign.map(a2=>a2.map[r0[a2.col]-1])));
+  let x0=row(opt.d);
+  if(opt.tune){ const d1=opt.d.slice(), d2=opt.d.slice(); d1[opt.tune.fi]=opt.tune.l; d2[opt.tune.fi]=opt.tune.l+1; const r1=row(d1), r2=row(d2); x0=r1.map((v,i)=>(1-opt.tune.t)*v+opt.tune.t*r2[i]); }
+  const h0=leverage(X,x0); if(!isFinite(h0)) return {predVar:null,dfE:dfUse,optimistic:true,predNote:'this setting cannot be estimated from the array'};
+  return {predVar:mseUse*h0,dfE:dfUse,optimistic:an.mean.mseSpare==null};
+}
+function renderTag(){
+  const box=document.getElementById('tagResults'), st=S.tag, des=st.design;
+  if(!des){ box.innerHTML=''; st.rec=null; return; }
+  if(st.type==='ntb'&&st.r<2){
+    box.innerHTML='<div class="panel flat"><div class="note">Nominal-is-best uses the spread s, so it needs at least 2 replicates per run. Raise the replicates, or switch to another quality characteristic.</div></div>'; st.rec=null; return;
+  }
+  if(!complete('tag')){ box.innerHTML=placeholder('tag'); st.rec=null; return; }
+  const badRuns=st.y.map((a2,i)=>({i,issue:snIssue(st.type,a2,S.target)})).filter(x=>x.issue);
+  if(badRuns.length){
+    box.innerHTML='<div class="panel flat"><div class="note"><b>The S/N ratio is undefined for '+badRuns.length+' run'+(badRuns.length>1?'s':'')+'</b> (for example run '+(badRuns[0].i+1)+': '+esc(badRuns[0].issue)+'). Raise the launch noise, add replicates, correct the entry, or choose another quality characteristic.</div></div>'; st.rec=null; return;
+  }
+  const an=analyzeTaguchi(st.y,des,st.type,S.target,st.pool);
+  const opt=taguchiOptimum(an,S.target,st.type);
+  const pv=tagPredVar(an,des,opt);
+  const rec={vals:opt.vals,predMean:opt.predMean,predSN:opt.predSN,predVar:pv.predVar,dfE:pv.dfE,optimistic:pv.optimistic,predNote:pv.predNote||null,tuned:!!opt.tune,key:JSON.stringify(opt.vals)};
+  if(!st.rec||st.rec.key!==rec.key) st.conf=[];
+  st.rec=rec; st.opt=opt;
+  st.y.forEach((_,i)=>updateRow('tag',i));
+  const keys=VK();
+
+  let h='<div class="panel flat"><h2>Results</h2>';
+  h+='<div class="kpis"><div class="kpi"><b>'+des.name+'</b><span>orthogonal array, '+des.N+' runs</span></div>'
+    +'<div class="kpi"><b>'+(st.r*des.N)+'</b><span>shots in the experiment</span></div>'
+    +'<div class="kpi"><b>'+fmt(an.sn.grand,1)+' dB</b><span>average S/N</span></div>'
+    +'<div class="kpi"><b>'+fmt(an.mean.grand,2)+' m</b><span>average distance</span></div>'
+    +'<div class="kpi"><b>'+TYPE_LABEL[st.type]+'</b><span>quality characteristic</span></div></div>';
+  h+='<p class="u">'+des.name+' has '+des.lev.length+' columns; '+keys.length+' carry your factors and '+des.unused.length+' are spare, which gives a free error estimate.'+(des.assign.some(a=>a.n===2&&des.lev[a.col]===3)?' Two-level factors placed in three-level columns use the dummy-level method (level 1 repeated).':'')+'</p>';
+
+  h+='<h3 style="margin-top:12px">Response table: S/N ratio (higher is better)</h3>'+respTable(an.sn,'S/N (dB)',2);
+  h+='<h3 style="margin-top:14px">Response table: mean distance</h3>'+respTable(an.mean,'Mean (m)',3);
+  h+='<p class="u">Delta is the gap between the highest and lowest level average; rank 1 is the biggest.</p>';
+
+  const snAll=[an.sn.grand], mnAll=[an.mean.grand];
+  an.sn.fac.forEach(f=>snAll.push(...f.m)); an.mean.fac.forEach(f=>mnAll.push(...f.m));
+  const yS=niceRange(snAll), yM=niceRange(mnAll);
+  h+='<h3 style="margin-top:16px">Main effects on S/N (spread and accuracy together)</h3><div class="plots">';
+  an.sn.fac.forEach(f=>{ const k=f.key; h+='<div class="pl">'+linePanel({title:k+'  '+DEF[k].name,sub:'delta '+fmt(f.delta,2)+' dB  (rank '+f.rank+')',xl:S.lv[k].map((_,l)=>lvLab(k,l)),series:[{v:f.m}],y:yS,hl:an.sn.grand})+'</div>'; });
+  h+='</div><h3 style="margin-top:16px">Main effects on the mean distance</h3><div class="plots">';
+  an.mean.fac.forEach(f=>{ const k=f.key; h+='<div class="pl">'+linePanel({title:k+'  '+DEF[k].name,sub:'delta '+fmt(f.delta,2)+' m  (rank '+f.rank+')',xl:S.lv[k].map((_,l)=>lvLab(k,l)),series:[{v:f.m}],y:yM,hl:an.mean.grand})+'</div>'; });
+  h+='</div>';
+
+  h+='<div class="row" style="margin-top:16px"><h3 style="margin:0">ANOVA with pooling</h3><label class="row">Pool the weakest <select id="tagPool"><option value="auto"'+(st.pool==='auto'?' selected':'')+'>Auto (F &lt; 2)</option>'+[...Array(keys.length).keys()].map(n=>'<option value="'+n+'"'+(String(st.pool)===String(n)?' selected':'')+'>'+n+'</option>').join('')+'</select> factors into error</label></div>';
+  h+='<p class="u">Spare array columns already estimate error. Auto pooling adds factors whose F ratio is below 2, the usual Taguchi rule, so the prediction model keeps only the larger factors. P-values after pooling are optimistic, because the weakest terms were chosen by looking at the data.</p>';
+  h+='<h3 style="margin-top:10px">ANOVA on S/N</h3>'+anovaTable(an.sn)+'<h3 style="margin-top:12px">ANOVA on mean distance</h3>'+anovaTable(an.mean);
+
+  h+='<h3 style="margin-top:16px">Factor roles</h3><div class="tblwrap"><table class="t cmp"><thead><tr><th>Factor</th><th>S/N delta (dB)</th><th>Mean delta (m)</th><th style="text-align:left">Role</th></tr></thead><tbody>';
+  an.sn.fac.forEach((f,fi)=>{
+    const g=an.mean.fac[fi], inSN=isImportant(f,S.alpha), inMn=isImportant(g,S.alpha);
+    const role=inSN?'<span class="pill ok">Control factor</span> affects consistency, so fix it at its best S/N level':(inMn?'<span class="pill warn">Adjustment factor</span> moves the mean without hurting S/N, so use it to steer to target':'<span class="pill no">Neutral</span> no real effect on S/N or mean, set for cost');
+    h+='<tr><td><b>'+f.key+'</b> '+esc(DEF[f.key].name)+'</td><td>'+fmt(f.delta,2)+'</td><td>'+fmt(g.delta,3)+'</td><td class="l" style="text-align:left">'+role+'</td></tr>';
+  });
+  h+='</tbody></table></div>';
+
+  h+='<div class="panel" style="margin-top:18px"><h3>Optimum setting</h3>'
+    +'<div class="stat"><span class="big">'+esc(settingText(opt.vals))+'</span></div>'
+    +'<div class="stat"><span>Predicted S/N <b>'+fmt(opt.predSN,1)+' dB</b></span><span>Predicted mean <b>'+fmt(opt.predMean,2)+' m</b></span></div>'
+    +'<ul class="clean">'+opt.notes.map(n=>'<li>'+esc(n)+'</li>').join('')+'</ul>'
+    +'<div class="note"><b>Treat this as a screening result.</b> The array estimates main effects only, a high rank does not prove a factor matters, and the predicted optimum is not proven to be the global best. A tuned value comes from straight-line interpolation between tested levels, and real physics bends, so the confirmation run is not optional.</div>'
+    +'<div id="tagConfirm"></div></div></div>';
+  box.innerHTML=h;
+  renderConfirm('tag');
+}
+
+/* =====================================================================
+   Confirmation runs
+===================================================================== */
+const NCONF=10;
+function confStats(t){
+  const ys=S[t].conf.filter(v=>v!=null);
+  if(!ys.length) return null;
+  const hit=ys.filter(y=>Math.abs(y-S.target)<=S.tol).length;
+  return {n:ys.length,mean:mean(ys),sd:sd(ys),hit:hit/ys.length,hits:hit,ys};
+}
+function renderConfirm(t){
+  const box=document.getElementById(t+'Confirm'); if(!box) return;
+  const st=S[t], rec=st.rec; if(!rec){ box.innerHTML=''; return; }
+  if(st.conf.length!==NCONF) st.conf=Array.from({length:NCONF},(_,i)=>st.conf[i]!=null?st.conf[i]:null);
+  let h='<h3 style="margin-top:14px">Confirmation run (10 shots at the recommended setting)</h3><div class="row">';
+  h+='<button class="btn primary" data-act="confirm-sim" data-t="'+t+'">Fire 10 confirmation shots</button><button class="btn small" data-act="confirm-clear" data-t="'+t+'">Clear</button></div>';
+  h+='<div class="row" style="margin:8px 0">';
+  st.conf.forEach((v,j)=>{ h+='<input type="number" step="any" class="cin" data-t="'+t+'" data-j="'+j+'" value="'+(v==null?'':v)+'" aria-label="Confirmation shot '+(j+1)+'">'; });
+  h+='</div><div id="'+t+'ConfOut"></div>';
+  box.innerHTML=h; updateConfOut(t);
+}
+/* Approximate test of observed-minus-predicted: Welch-Satterthwaite combination of the model's prediction variance
+   (df = error df of the fit) and the sampling variance of the new shots (df = n-1). */
+function confTest(predMean,predVar,dfE,ys,alpha){
+  const n=ys.length; if(n<2||predVar==null||!(dfE>0)) return null;
+  const m=mean(ys), s2=sd(ys); if(!(s2>0)) return null;
+  const a=predVar, b=s2*s2/n, se=Math.sqrt(a+b), diff=m-predMean, tv=diff/se;
+  const df=Math.pow(a+b,2)/((a*a)/dfE+(b*b)/(n-1));
+  return {tv,df,p:pF(tv*tv,1,df),half:tCrit(df,alpha)*se,se,diff};
+}
+function updateConfOut(t){
+  const out=document.getElementById(t+'ConfOut'); if(!out) return;
+  const cs=confStats(t), rec=S[t].rec;
+  if(!cs){ out.innerHTML='<p class="u">No confirmation data yet.</p>'; return; }
+  const diff=cs.mean-rec.predMean, lvl=Math.round((1-S.alpha)*100)+'%';
+  let h='<div class="stat"><span>Observed mean <b>'+fmt(cs.mean,3)+' m</b></span><span>s <b>'+fmt(cs.sd,3)+' m</b></span><span>Predicted mean <b>'+fmt(rec.predMean,2)+' m</b></span><span>On target (±'+S.tol.toFixed(2)+' m) <b>'+cs.hits+' of '+cs.n+' ('+fmt(cs.hit*100,0)+'%)</b></span></div>';
+  if(cs.n<NCONF){ out.innerHTML=h+'<p class="u">Record all '+NCONF+' shots for a fair verdict.</p>'; return; }
+  const tn=tCrit(cs.n-1,S.alpha), hw=tn*cs.sd/Math.sqrt(cs.n);
+  let stat=null, li='<li><b>1. Descriptive:</b> the observed mean is '+fmt(cs.mean,3)+' m ('+lvl+' confidence interval '+fmt(cs.mean-hw,2)+' to '+fmt(cs.mean+hw,2)+' m) against a predicted '+fmt(rec.predMean,2)+' m, a gap of '+signed(diff,3)+' m.</li>';
+  const ctr=confTest(rec.predMean,rec.predVar,rec.dfE,cs.ys,S.alpha);
+  if(ctr){
+    const tv=ctr.tv, df=ctr.df, p=ctr.p, half=ctr.half;
+    stat={p,agree:p>=S.alpha};
+    li+='<li><b>2. Statistical (approximate):</b> '+(stat.agree?'no evidence that the true mean differs from the prediction':'the observed mean differs from the prediction')+' (t = '+fmt(tv,2)+', df ≈ '+fmt(df,0)+', p '+fmtP(p)+'). The '+lvl+' prediction interval for the mean of '+cs.n+' new shots, centred on the prediction, is '+fmt(rec.predMean-half,2)+' to '+fmt(rec.predMean+half,2)+' m. Its width uses the prediction variance of the full fitted model at this setting (all candidate terms, so choosing terms by p-value cannot narrow it) plus the scatter of these shots.'+(rec.optimistic?' <b>Optimistic:</b> this interval uses only the terms that were kept (or a pooled error estimate), because the full set of candidate terms is aliased at this setting.':'')+(rec.tuned?' The setting was interpolated between two tested levels; straight-line interpolation error is <b>not</b> in this interval.':'')+'</li>';
+  } else li+='<li><b>2. Statistical:</b> not available, because '+(rec.predNote||'the experiment gives no error estimate for the prediction')+'.</li>';
+  const need=S.hitReq, okP=cs.hit>=need-1e-9;
+  li+='<li><b>3. Practical acceptance:</b> '+cs.hits+' of '+cs.n+' shots on target ('+fmt(cs.hit*100,0)+'%) against a required '+Math.round(need*100)+'%: <b>'+(okP?'pass':'fail')+'</b>.</li>';
+  let verdict;
+  if(okP&&(!stat||stat.agree)) verdict='<div class="note info"><b>Accept for trial use.</b> The setting meets the practical target'+(stat?' and agrees with the model':'; the model\'s prediction could not be tested')+'.</div>';
+  else if(okP) verdict='<div class="note"><b>Usable, but do not trust the model.</b> Enough shots land on target, yet the model predicted a different mean. Look for curvature or an interaction before relying on the prediction.</div>';
+  else verdict='<div class="note"><b>Do not adopt yet.</b> Too few confirmation shots land in the tolerance band'+(stat&&!stat.agree?', and the model also missed the mean':'')+'. Add runs near this setting or reduce the variation.</div>';
+  out.innerHTML=h+'<ul class="clean">'+li+'</ul>'+verdict;
+}
+function confirmSim(t){
+  const rec=S[t].rec; if(!rec) return;
+  const shots=Array.from({length:NCONF},()=>shotAt(rec.vals));
+  S[t].conf=shots.map(sh=>roundCm(sh.dist));
+  const view=t==='fact'?vFact:vTag;
+  shots.forEach(sh=>view.addInstant(rec.vals,sh));
+  renderConfirm(t); renderCompare();
+}
+
+/* =====================================================================
+   Compare and decide
+===================================================================== */
+function renderCompare(){
+  const box=document.getElementById('cmpBody'); if(!box) return;
+  const f=S.fact.rec, tg=S.tag.rec, cf=confStats('fact'), ct=confStats('tag');
+  if(!f&&!tg){
+    box.innerHTML='<div class="panel"><p>Run the factorial and the Taguchi experiment first. This page then lines up what each method recommends, what it cost, and how the confirmation shots performed.</p><div class="row"><button class="btn" data-act="tab" data-tab="fact">Go to Factorial</button><button class="btn" data-act="tab" data-tab="tag">Go to Taguchi</button></div></div>';
+    renderTrainerCmp(); return;
+  }
+  const nF=S.fact.y.length*S.fact.r, nT=S.tag.y.length*S.tag.r;
+  const row=(name,rec,cs,shots)=>'<tr><td><b>'+name+'</b></td><td>'+(rec?shots:'–')+'</td><td class="l">'+(rec?esc(settingText(rec.vals)):'not analysed yet')+'</td><td>'+(rec?fmt(rec.predMean,2)+' m':'–')+'</td><td>'+(cs?fmt(cs.mean,2)+' m':'–')+'</td><td>'+(cs?fmt(cs.sd,3)+' m':'–')+'</td><td>'+(cs?cs.hits+'/'+cs.n+' ('+fmt(cs.hit*100,0)+'%)'+(cs.n===NCONF?(cs.hit>=S.hitReq-1e-9?' <span class="pill ok">accept</span>':' <span class="pill bad">below '+Math.round(S.hitReq*100)+'%</span>'):''):'–')+'</td></tr>';
+  let h='<div class="tblwrap"><table class="t cmp"><thead><tr><th>Method</th><th>Shots to find it</th><th style="text-align:left">Recommended setting</th><th>Predicted mean</th><th>Confirmed mean</th><th>Confirmed s</th><th>On target</th></tr></thead><tbody>';
+  h+=row(esc(S.fact.fd?S.fact.fd.label:'Factorial')+' ('+(S.fact.fd?S.fact.fd.R:0)+' runs)',f,cf,nF);
+  h+=row('Taguchi '+(S.tag.design?S.tag.design.name:'')+' ('+(S.tag.design?S.tag.design.N:0)+' runs)',tg,ct,nT);
+  h+='</tbody></table></div><div class="panel"><h3>Reading the comparison</h3><ul class="clean">';
+  if(f&&tg) h+='<li>The Taguchi array used <b>'+nT+'</b> shots against <b>'+nF+'</b> for the factorial: '+Math.round(100*(1-nT/nF))+'% fewer'+(S.tag.r!==S.fact.r?' (replicate counts differ)':'')+'.</li>';
+  if(cf&&ct&&cf.n===NCONF&&ct.n===NCONF){
+    const better=(ct.hit>cf.hit)?'Taguchi':(cf.hit>ct.hit?'the factorial':(ct.sd<cf.sd?'Taguchi':'the factorial'));
+    h+='<li>On the confirmation shots, <b>'+better+'</b> put more shots inside the tolerance band'+((ct.hit===cf.hit)?' (tied on hits, so decided on spread)':'')+'. Spread: '+fmt(cf.sd,3)+' m (factorial) against '+fmt(ct.sd,3)+' m (Taguchi).</li>';
+  } else h+='<li>Fire the 10 confirmation shots in both tabs to compare how the two settings really behave.</li>';
+  h+='<li>The factorial separates every interaction; the Taguchi arrays here estimate main effects only. If the two methods disagree, look for a significant interaction in the factorial.</li>';
+  h+='<li>The Taguchi S/N rewards repeatability as well as accuracy. A setting that hits the target on average but scatters widely can look fine in a mean-only analysis and still make scrap.</li>';
+  h+='</ul></div><div class="panel"><h3>Decision checklist for the work instruction</h3><ul class="clean"><li>Confirmation hit rate is acceptable for the process capability you need.</li><li>Factors tuned by interpolation have been confirmed at the tuned value, not only at the tested levels.</li><li>Control factors are locked in the work instruction; neutral factors are set for cost.</li><li>Note the range of the experiment: do not extrapolate outside the tested levels.</li></ul></div>';
+  box.innerHTML=h;
+  renderTrainerCmp();
+}
+let _cmpCache=null;
+function trueCells(){
+  const key=JSON.stringify([S.lv,S.nf,S.target,S.tol,S.noise]);
+  if(_cmpCache&&_cmpCache.key===key) return _cmpCache.rows;
+  const rows=[];
+  const src=(!S.fact.tooBig&&S.fact.y.length)?'fact':(S.tag.y.length?'tag':null);
+  if(src){
+    const n=S[src].y.length;
+    for(let i=0;i<n;i++){ const p=settingFor(src,i); rows.push({p,m:mcStats(p,500,777+i,S.noise)}); }
+  }
+  _cmpCache={key,rows}; return rows;
+}
+function renderTrainerCmp(){
+  const box=document.getElementById('cmpTrainer'); if(!box) return;
+  if(!S.trainer){ box.innerHTML=''; return; }
+  const all=trueCells().slice().sort((a,b)=>(b.m.hit-a.m.hit)||(a.m.sd-b.m.sd)), rows=all.slice(0,12);
+  let h='<div class="panel"><h3>Trainer view: true behaviour of the tested settings</h3><p class="u">Computed from 500 simulated shots per setting at the current noise level. Sorted by share of shots on target; best '+rows.length+' of '+all.length+' shown.</p><div class="tblwrap"><table class="t"><thead><tr><th>Setting</th><th>True mean (m)</th><th>True s (m)</th><th>On target</th></tr></thead><tbody>';
+  rows.forEach(r=>{ h+='<tr><td>'+esc(settingText(r.p))+'</td><td>'+fmt(r.m.mean,2)+'</td><td>'+fmt(r.m.sd,3)+'</td><td>'+fmt(r.m.hit*100,0)+'%</td></tr>'; });
+  h+='</tbody></table></div><p class="u" style="margin-top:8px">Hidden model: range = x<sub>release</sub> + v·cos α·t<sub>flight</sub> with air drag, v² = 350 · (0.4 + 0.6·C) · (0.6 + 0.4·E) · θ² / m. Speed noise is 2% to 7% (rising with C, lighter balls and larger A, falling with E) plus launch-angle noise of 0.4° + 0.2° per mm of pin play G.</p></div>';
+  box.innerHTML=h;
+}
+
+/* =====================================================================
+   Play tab
+===================================================================== */
+function buildSliders(){
+  const box=document.getElementById('playSliders'); if(!box) return;
+  const act=FALL.slice(); let h='';
+  act.forEach(k=>{
+    const d=DEF[k];
+    if(d.type==='disc'){
+      if(!d.opts.includes(S.play.p[k])) S.play.p[k]=d.base;
+      h+='<div class="slider"><div class="lbl"><span><b>'+k+'</b> '+esc(d.name)+'</span><span id="slv'+k+'"></span></div><div class="seg" role="group" aria-label="'+esc(d.name)+'">'
+        +d.opts.map((o,i)=>'<button type="button" data-bin="'+k+'" data-i="'+i+'" aria-pressed="'+(S.play.p[k]===o)+'">'+esc(d.labels[i])+'</button>').join('')
+        +'</div><small style="margin-top:4px">'+esc(d.hint)+'</small></div>';
+    } else {
+      S.play.p[k]=clamp(S.play.p[k],d.min,d.max);
+      h+='<div class="slider"><div class="lbl"><label for="sl'+k+'"><b>'+k+'</b> '+esc(d.name)+'</label><span id="slv'+k+'"></span></div>'
+        +'<input type="range" id="sl'+k+'" min="'+d.min+'" max="'+d.max+'" step="'+d.step+'" value="'+S.play.p[k]+'"><small>'+esc(d.hint)+'</small></div>';
+    }
+  });
+  box.innerHTML=h;
+  act.forEach(k=>{
+    if(DEF[k].type!=='cont') return;
+    const el=document.getElementById('sl'+k);
+    el.addEventListener('input',()=>{ S.play.p[k]=parseFloat(el.value); updatePlay(); });
+  });
+  box.querySelectorAll('[data-bin]').forEach(btn=>btn.addEventListener('click',()=>{
+    const k=btn.dataset.bin, i=+btn.dataset.i;
+    S.play.p[k]=DEF[k].opts[i];
+    box.querySelectorAll('[data-bin="'+k+'"]').forEach(b=>b.setAttribute('aria-pressed',String(+b.dataset.i===i)));
+    updatePlay();
+  }));
+  updatePlay();
+}
+function playStatsHTML(){
+  const ys=S.play.shots;
+  if(!ys.length) return '<span class="u">No shots yet. Set the factors and press Fire.</span>';
+  const hits=ys.filter(y=>Math.abs(y-S.target)<=S.tol).length;
+  return '<span>Shots <b>'+ys.length+'</b></span><span>Last <b>'+fmt(ys[ys.length-1],2)+' m</b></span><span>Mean <b>'+fmt(mean(ys),2)+' m</b></span><span>s <b>'+fmt(sd(ys),3)+' m</b></span><span>On target <b>'+hits+' ('+Math.round(100*hits/ys.length)+'%)</b></span>';
+}
+function updatePlay(){
+  FALL.forEach(k=>{ const e=document.getElementById('slv'+k); if(e) e.textContent=fmtVal(k,S.play.p[k]); });
+  if(vPlay) vPlay.setParams(S.play.p);
+  const st=document.getElementById('playStats'); if(st) st.innerHTML=playStatsHTML();
+  const tr=document.getElementById('playTrainer'); if(!tr) return;
+  if(S.trainer){
+    const m=trueModel(S.play.p), f=flight(m.v,m.al,m.h,m.drag), mc=mcStats(S.play.p,2000,12345,S.noise);
+    tr.innerHTML='<b>Hidden physics at these settings</b><br>Launch speed '+fmt(m.v,2)+' m/s · speed noise '+fmt(m.cv*100,1)+'% · ideal range '+fmt(f.range,2)+' m<br>True mean '+fmt(mc.mean,2)+' m · true s '+fmt(mc.sd,3)+' m · on target '+fmt(mc.hit*100,0)+'% of shots';
+  } else tr.innerHTML='';
+}
+function playFire(n){
+  const p=S.play.p;
+  if(n===1){
+    const s=shotAt(p), d=roundCm(s.dist); S.play.shots.push(d);
+    if(REDUCE) vPlay.addInstant(p,s); else vPlay.fire(p,s);
+    toast('Landed at '+d.toFixed(2)+' m');
+  } else {
+    for(let i=0;i<n;i++){ const s=shotAt(p); S.play.shots.push(roundCm(s.dist)); vPlay.addInstant(p,s); }
+  }
+  document.getElementById('playStats').innerHTML=playStatsHTML();
+}
+
+/* =====================================================================
+   Wiring
+===================================================================== */
+function showTab(id){
+  document.querySelectorAll('section.tab').forEach(s=>s.classList.toggle('on',s.id==='tab-'+id));
+  document.querySelectorAll('nav.steps button').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.tab===id)));
+  requestAnimationFrame(()=>{ ALL_VIEWS().forEach(v=>v.resize()); });
+  if(id==='cmp') renderCompare();
+  window.scrollTo({top:0});
+}
+function refreshAll(){
+  ALL_VIEWS().forEach(v=>v.draw());
+  updatePlay(); renderResults('fact'); renderResults('tag'); renderCompare();
+}
+function setTrainer(on){
+  S.trainer=on; document.getElementById('trainerPlay').checked=on; document.getElementById('trainerCmp').checked=on;
+  updatePlay(); renderTrainerCmp();
+}
+function resizeRep(t,r){
+  const st=S[t]; st.r=r; st.y=emptyY(st.y.length,r,st.y); st.conf=[]; st.rec=null;
+  renderTable(t); renderResults(t); renderCompare();
+}
+
+/* =====================================================================
+   Built-in self-test: known-answer checks that run in the user's own browser.
+   Reference values were computed independently (scipy / hand calculation). User settings are saved and restored.
+===================================================================== */
+const RELEASE='1.0 (16 October 2026)';
+function runSelfTests(){
+  const R=[], add=(name,ok,detail)=>R.push({name,ok:!!ok,detail:detail||''}), near=(a,b,t)=>Math.abs(a-b)<=t;
+  const sv={nf:S.nf,lv:JSON.parse(JSON.stringify(S.lv)),des:S.fact.design,bal:S.tag.balance};
+  const setCfg=(n2,n3)=>{ S.nf=n2+n3; FALL.forEach((f,i)=>{ const o=DEF[f].opts; S.lv[f]=i<n3?o.slice():[o[0],o[2]]; }); S.fact.design='auto'; S.tag.balance='small'; };
+  try{
+    let v;
+    v=pF(4.9646,1,10); add('F distribution tail, F = 4.9646 with 1 and 10 df',near(v,0.0500000522,1e-6),'got '+v.toFixed(7)+', reference 0.0500001');
+    v=tCrit(10,0.05); add('t critical value, 10 df, 95%',near(v,2.228139,1e-4),'got '+v.toFixed(5)+', reference 2.22814');
+    v=chiSqSf(3.841458820694124,1); add('Chi-square tail, 3.8415 with 1 df',near(v,0.05,1e-6),'got '+v.toFixed(7)+', reference 0.0500000');
+    const bt=bartlett([[1,2,3],[2,4,6],[3,6,9]]); add('Bartlett test on known groups',bt&&near(bt.stat,1.698244665,1e-6)&&near(bt.p,0.427790225,1e-6),bt?'got statistic '+bt.stat.toFixed(5)+', p '+bt.p.toFixed(5)+'; reference 1.69824, 0.42779':'not computed');
+    /* full 2x2 factorial, y = 10 + 2A + 3B + 4AB, two replicates at plus and minus 0.5 */
+    const Y2=[0,1,2,3].map(i=>{ const xa=(i&1)?1:-1, xb=(i&2)?1:-1, y=10+2*xa+3*xb+4*xa*xb; return [y-0.5,y+0.5]; });
+    const a2=analyzeFull(Y2,[2,2],['A','B'],0.05,'pure'), g=n=>a2.terms.find(t=>t.name===n);
+    add('Full 2x2 factorial known answer: SS A = 32, B = 72, A×B = 128',near(g('A').ss,32,1e-9)&&near(g('B').ss,72,1e-9)&&near(g('A×B').ss,128,1e-9),'got '+g('A').ss.toFixed(3)+', '+g('B').ss.toFixed(3)+', '+g('A×B').ss.toFixed(3));
+    /* fractional 2^(5-1), same response */
+    setCfg(5,0); const f5=buildFactDesign();
+    const Y5=f5.runs.map(d=>{ const xa=d[0]?1:-1, xb=d[1]?1:-1, y=10+2*xa+3*xb+4*xa*xb; return [y-0.5,y+0.5]; });
+    const a5=analyzeAny(Y5,f5,0.05,'pure'), h=n=>a5.terms.find(t=>t.name===n);
+    const others=a5.terms.filter(t=>!['A','B','A×B'].includes(t.name)).every(t=>t.ss<1e-9);
+    add('Fractional 2^(5-1) known answer: SS A = 128, B = 288, A×B = 512, every other term 0',f5.label.indexOf('2^(5-1)')>=0&&near(h('A').ss,128,1e-8)&&near(h('B').ss,288,1e-8)&&near(h('A×B').ss,512,1e-8)&&others&&a5.dfE===16,f5.label+'; got '+h('A').ss.toFixed(2)+', '+h('B').ss.toFixed(2)+', '+h('A×B').ss.toFixed(2));
+    /* sums of squares and degrees of freedom add up for a partly aliased three-level fraction */
+    setCfg(0,4); const f34=buildFactDesign(); const rr=makeRng(7), rn=()=>{let u=0;while(u===0)u=rr();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*rr());};
+    const Y34=f34.runs.map(()=>[0,1,2].map(()=>5+rn())), a34=analyzeAny(Y34,f34,0.05,'auto');
+    const ssSum=a34.terms.reduce((x,t)=>x+t.ss,0)+a34.ssLeft+a34.ssPure, dfSum=a34.terms.reduce((x,t)=>x+t.df,0)+a34.dfLeft+f34.R*2;
+    add('Sums of squares and degrees of freedom add up (3^(4-1), partly aliased)',near(ssSum,a34.ssTot,1e-8*Math.max(1,a34.ssTot))&&dfSum===f34.R*3-1,'SS '+ssSum.toFixed(4)+' vs total '+a34.ssTot.toFixed(4)+'; df '+dfSum+' vs '+(f34.R*3-1));
+    /* aliased two-level pairs must be identical columns on the fired runs */
+    setCfg(4,1); const fa=buildFactDesign(), Ya=fa.runs.map(()=>[0,1,2].map(()=>5+rn())), aa=analyzeAny(Ya,fa,0.05,'auto');
+    const letters=fa.keys, maskOf=nm=>nm.split('×').reduce((m,l)=>m|(1<<letters.indexOf(l)),0); let pairs=0, same=true;
+    aa.aliasGroups.forEach(gr=>{ const p=gr.split(' ≡ '); if(p.length!==2) return; const m1=maskOf(p[0]), m2=maskOf(p[1]); const all2=[m1,m2].every(m=>letters.every((l,i)=>!((m>>i)&1)||fa.ns[i]===2)); if(!all2) return; pairs++;
+      const c1=termColDefs(m1,fa.ns)[0], c2=termColDefs(m2,fa.ns)[0]; if(!fa.runs.every(d=>evalCol(c1,fa.ns,d)===evalCol(c2,fa.ns,d))) same=false; });
+    add('Reported aliases are identical columns on the fired runs ('+fa.label+')',pairs>0&&same,pairs+' alias pairs checked');
+    /* orthogonal arrays */
+    let arrBad=[]; Object.keys(ARRAYS).forEach(nm=>{ const A=ARRAYS[nm](), N=A.rows.length, C=A.lev.length;
+      for(let i=0;i<C;i++) for(let j=i+1;j<C;j++){ const cnt={}; A.rows.forEach(r=>{ const k=r[i]+'-'+r[j]; cnt[k]=(cnt[k]||0)+1; }); const exp=N/(A.lev[i]*A.lev[j]); const vals=Object.values(cnt); if(vals.length!==A.lev[i]*A.lev[j]||vals.some(x=>x!==exp)){ arrBad.push(nm); return; } } });
+    add('All '+Object.keys(ARRAYS).length+' standard orthogonal arrays are balanced and pairwise orthogonal',arrBad.length===0,arrBad.length?'failed: '+arrBad.join(', '):Object.keys(ARRAYS).join(', '));
+    /* exactly balanced mixed-level array */
+    setCfg(3,3); S.tag.balance='balanced'; const tb=tagDesign(); let balOK=true;
+    tb.assign.forEach(a=>{ const c=Array(a.n).fill(0); tb.rows.forEach(r=>c[a.map[r[a.col]-1]]++); if(c.some(x=>x!==c[0])) balOK=false; });
+    for(let i=0;i<tb.assign.length&&balOK;i++) for(let j=i+1;j<tb.assign.length&&balOK;j++){ const A=tb.assign[i], B=tb.assign[j], nab={}; tb.rows.forEach(r=>{ const k=A.map[r[A.col]-1]+','+B.map[r[B.col]-1]; nab[k]=(nab[k]||0)+1; }); for(let x=0;x<A.n;x++) for(let y=0;y<B.n;y++) if((nab[x+','+y]||0)!==tb.N/(A.n*B.n)) balOK=false; }
+    add('Exactly balanced mixed-level array: 3 two-level + 3 three-level factors',tb.name==='L4 × L9'&&tb.N===36&&balOK&&tb.dummies.length===0,tb.name+', '+tb.N+' runs, every factor and every pair exactly balanced');
+    setCfg(8,0); const f8=buildFactDesign(), str=designStrength(f8.runs,f8.ns);
+    add('Design check, 8 two-level factors: 2^(8-2), resolution V, strength 4 or more',f8.label.indexOf('2^(8-2)')>=0&&f8.res===5&&str>=4,f8.label+', '+f8.R+' runs, verified strength '+str);
+    v=snRatio('ntb',[2.9,3.0,3.1],3); add('S/N nominal-is-best for 2.9, 3.0, 3.1 = 29.5424 dB',near(v,29.542425,1e-3),'got '+v.toFixed(4));
+    const undef=[snRatio('ntb',[3],3),snRatio('ntb',[3,3],3),snRatio('ltb',[0,2,3],3),snRatio('stb',[0,0,0],3),snRatio('msd',[3,3],3),snRatio('stb',[-1,2],3),snRatio('ntb',[3,NaN],3)];
+    add('S/N is undefined (NaN) for one replicate, identical shots, zero, negative, on-target-only and invalid values',undef.every(x=>Number.isNaN(x)),undef.map(x=>Number.isNaN(x)?'NaN':x.toFixed(1)).join(', '));
+    const l1=leverage([[1,-1],[1,1]],[1,0]), l2=leverage([[1,1],[1,1]],[1,-1]);
+    add('Prediction leverage: known value 0.5, and a non-estimable row gives Infinity',near(l1,0.5,1e-6)&&l2===Infinity,'got '+l1.toFixed(6)+' and '+l2);
+    const c0=confTest(3,0.01,10,[3.0,3.1,2.9,3.05,2.95,3.0,3.02,2.98,3.01,2.99],0.05), c1=confTest(3,0.01,10,[3.4,3.5,3.3,3.45,3.35,3.4,3.42,3.38,3.41,3.39],0.05);
+    add('Confirmation test known answers: no gap gives p = 1; a 0.4 m shift gives t = 3.943, p = 0.00248',c0&&near(c0.p,1,1e-9)&&c1&&near(c1.tv,3.943445,1e-4)&&near(c1.p,0.00247733,1e-6),c1?'shifted sample: t '+c1.tv.toFixed(3)+', df '+c1.df.toFixed(2)+', p '+c1.p.toFixed(5):'not computed');
+    add('Typed-distance validation rejects zero, negative, huge and non-numeric entries',validDistance(2.5)&&!validDistance(0)&&!validDistance(-1)&&!validDistance(5000)&&!validDistance(NaN)&&!validDistance('2.5'),'accepts 2.5 m only');
+    /* worst case: every continuous factor at 3 points, every discrete factor at all options, noise at 2x and +/-3.5 sigma on speed and angle */
+    let mn=1e9; const gk=FALL.map(k=>{ const d=DEF[k]; return d.type==='cont'?[d.min,(d.min+d.max)/2,d.max]:d.opts; });
+    (function rec(i,p){ if(i===FALL.length){ const m=trueModel(fullParams(p)); for(const zv of [-3.5,0,3.5]) for(const za of [-3.5,0,3.5]){ const vv=Math.max(0.1,m.v*(1+m.cv*2*zv)), rg=flight(vv,m.al+m.sa*2*za,m.h,m.drag).range; if(rg<mn) mn=rg; } return; } gk[i].forEach(x=>{ p[FALL[i]]=x; rec(i+1,p); }); })(0,{});
+    add('Worst-case simulated distance is positive (every factor at its limits, noise 2× at ±3.5 sigma)',mn>0,'smallest range '+mn.toFixed(3)+' m; recorded distances are floored at 0.01 m');
+    const r3=makeRng(11); let mn2=1e9; for(let i=0;i<20000;i++){ const p={}; FALL.forEach(k=>{ const d=DEF[k]; p[k]=d.type==='cont'?d.min+r3()*(d.max-d.min):d.opts[Math.floor(r3()*3)]; }); const dd=shotWith(fullParams(p),r3,2).dist; if(dd<mn2) mn2=dd; }
+    add('Simulated distances stay positive over a random sample (20,000 shots at 2× noise)',mn2>0,'smallest distance '+mn2.toFixed(3)+' m');
+  } catch(e){ add('Self-test ran without an error',false,String(e&&e.message||e)); }
+  finally { S.nf=sv.nf; S.lv=sv.lv; S.fact.design=sv.des; S.tag.balance=sv.bal; }
+  return R;
+}
+function renderSelfTest(){
+  const out=document.getElementById('selfTestOut'); if(!out) return;
+  const res=runSelfTests(), ok=res.filter(r=>r.ok).length;
+  let h='<div class="note '+(ok===res.length?'info':'')+'"><b>'+ok+' of '+res.length+' checks passed</b> in this browser (release '+RELEASE+'). Your settings and data were not changed.</div>';
+  h+='<div class="tblwrap"><table class="t cmp"><thead><tr><th>Check</th><th style="text-align:left">Result</th><th style="text-align:left">Detail</th></tr></thead><tbody>';
+  res.forEach(r=>{ h+='<tr><td class="l" style="text-align:left">'+esc(r.name)+'</td><td style="text-align:left">'+(r.ok?'<span class="pill ok">pass</span>':'<span class="pill bad">FAIL</span>')+'</td><td class="l" style="text-align:left">'+esc(r.detail)+'</td></tr>'; });
+  out.innerHTML=h+'</tbody></table></div>';
+}
+
+function init(){
+  REDUCE=!!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches);
+  const rid=document.getElementById('relId'); if(rid) rid.textContent=RELEASE;
+  vPlay=new CatView(document.getElementById('cvPlay'),0.4);
+  vFact=new CatView(document.getElementById('cvFact'),0.3);
+  vTag=new CatView(document.getElementById('cvTag'),0.3);
+  resetDesigns();
+  renderLevels(); buildSliders(); renderTable('fact'); renderTable('tag');
+  renderResults('fact'); renderResults('tag'); renderCompare();
+  ALL_VIEWS().forEach(v=>v.resize());
+  window.addEventListener('resize',()=>ALL_VIEWS().forEach(v=>v.resize()));
+  if(window.matchMedia){ const mq=matchMedia('(prefers-color-scheme: dark)'); if(mq.addEventListener) mq.addEventListener('change',()=>refreshAll()); }
+  if(window.MutationObserver) new MutationObserver(()=>refreshAll()).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+
+  document.addEventListener('click',e=>{
+    const pkb=e.target.closest('[data-lvpick]'); if(pkb){ pickLevel(pkb.closest('.lvEditor').dataset.t,pkb.dataset.lvpick,+pkb.dataset.i); return; }
+    const tg=e.target.closest('[data-lvtog]'); if(tg){ onToggle(tg); return; }
+    const b=e.target.closest('[data-act]'); if(!b) return;
+    switch(b.dataset.act){
+      case 'tab': showTab(b.dataset.tab); break;
+      case 'reseed': { S.seed=Math.floor(Math.random()*1e9); document.getElementById('cSeed').value=S.seed; rng=makeRng(S.seed); toast('New random sequence: seed '+S.seed); break; }
+      case 'selftest': renderSelfTest(); break;
+      case 'play-fire': playFire(1); break;
+      case 'play-fire10': playFire(10); break;
+      case 'play-clear': S.play.shots=[]; vPlay.clear(); updatePlay(); break;
+      case 'fact-next': fireNext('fact'); break;
+      case 'fact-all': fireAll('fact'); break;
+      case 'fact-clear': clearData('fact'); break;
+      case 'fact-shuffle': if(S.fact.y.length){ S.fact.order=shuffle([...Array(S.fact.y.length).keys()]); document.getElementById('factRand').checked=true; S.fact.rand=true; renderTable('fact'); } break;
+      case 'tag-next': fireNext('tag'); break;
+      case 'tag-all': fireAll('tag'); break;
+      case 'tag-clear': clearData('tag'); break;
+      case 'tag-shuffle': if(S.tag.y.length){ S.tag.order=shuffle([...Array(S.tag.y.length).keys()]); document.getElementById('tagRand').checked=true; S.tag.rand=true; renderTable('tag'); } break;
+      case 'fact-view': S.fact.view=b.dataset.v; renderFact(); break;
+      case 'confirm-sim': confirmSim(b.dataset.t); break;
+      case 'confirm-clear': S[b.dataset.t].conf=[]; renderConfirm(b.dataset.t); renderCompare(); break;
+    }
+  });
+  document.addEventListener('input',e=>{
+    const el=e.target;
+    if(el.classList.contains('yin')){
+      const v=el.value===''?null:parseFloat(el.value), t=el.dataset.t, i=+el.dataset.i, j=+el.dataset.j;
+      S[t].y[i][j]=acceptDistance(el,v,false); updateRow(t,i); updateProg(t); scheduleAnalysis(t); renderLevels();
+    } else if(el.classList.contains('cin')){
+      const v=el.value===''?null:parseFloat(el.value), t=el.dataset.t, j=+el.dataset.j;
+      S[t].conf[j]=acceptDistance(el,v,false); updateConfOut(t); renderCompare();
+    } else if(el.id==='cNoise'){
+      S.noise=parseFloat(el.value); document.getElementById('cNoiseV').textContent=S.noise.toFixed(1)+'×'; updatePlay(); _cmpCache=null; renderTrainerCmp();
+    }
+  });
+  document.addEventListener('change',e=>{
+    const el=e.target;
+    if(el.classList.contains('yin')||el.classList.contains('cin')){ const v=el.value===''?null:parseFloat(el.value); acceptDistance(el,v,true); }
+    else if(el.classList.contains('lvin')) onLevelValue(el);
+    else if(el.classList.contains('lvn')) onLevelCount(el);
+    else if(el.id==='nfSel'){ if(lockedLevels()){ renderLevels(); return; } S.nf=parseInt(el.value,10); applyDesignChange('Number of factors changed: recorded shots were cleared.'); }
+    else if(el.id==='cTarget'||el.id==='cTol'){
+      S.target=clamp(parseFloat(document.getElementById('cTarget').value)||3,1,6);
+      S.tol=clamp(parseFloat(document.getElementById('cTol').value)||0.25,0.05,1);
+      document.getElementById('cTarget').value=S.target.toFixed(2); document.getElementById('cTol').value=S.tol.toFixed(2);
+      refreshAll();
+    }
+    else if(el.id==='cAlpha'){ S.alpha=parseFloat(el.value); refreshAll(); }
+    else if(el.id==='cHit'){ S.hitReq=parseFloat(el.value); refreshAll(); }
+    else if(el.id==='cSeed'){ const v=parseInt(el.value,10); if(!isNaN(v)){ S.seed=v; rng=makeRng(v); toast('Random sequence reset to seed '+v); } }
+    else if(el.id==='factDesign'){ if(lockedLevels()){ el.value=S.fact.design; toast('Clear data before changing the design.'); } else { S.fact.design=el.value; applyDesignChange('Design changed: recorded shots were cleared.'); } }
+    else if(el.id==='tagBal'){
+      if(filledCount('tag')>0){ el.value=S.tag.balance; toast('Clear the Taguchi data before changing the array.'); }
+      else { S.tag.balance=el.value; const td=tagDesign(); S.tag.design=td; S.tag.y=td?emptyY(td.N,S.tag.r):[]; S.tag.order=null; S.tag.conf=[]; S.tag.rec=null; S.tag.cur=null; renderLevels(); renderTable('tag'); renderResults('tag'); renderCompare(); toast('Taguchi array changed.'); }
+    }
+    else if(el.id==='factR') resizeRep('fact',parseInt(el.value,10));
+    else if(el.id==='tagR') resizeRep('tag',parseInt(el.value,10));
+    else if(el.id==='factRand'){ S.fact.rand=el.checked; S.fact.order=el.checked&&S.fact.y.length?shuffle([...Array(S.fact.y.length).keys()]):null; renderTable('fact'); }
+    else if(el.id==='tagRand'){ S.tag.rand=el.checked; S.tag.order=el.checked&&S.tag.y.length?shuffle([...Array(S.tag.y.length).keys()]):null; renderTable('tag'); }
+    else if(el.id==='factErr'){ S.fact.err=el.value; renderFact(); renderCompare(); }
+    else if(el.id==='factGoal'){ S.fact.goal=el.value; renderFact(); renderCompare(); }
+    else if(el.id==='tagType'){ S.tag.type=el.value; S.tag.conf=[]; S.tag.rec=null; renderTable('tag'); renderTag(); renderCompare(); }
+    else if(el.id==='tagPool'){ S.tag.pool=el.value; renderTag(); renderCompare(); }
+    else if(el.id==='trainerPlay'||el.id==='trainerCmp') setTrainer(el.checked);
+  });
+}
+
+if(typeof document!=='undefined'){
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init); else init();
+}
+if(typeof module!=='undefined') module.exports={S,DEF,FALL,mean,sd,pF,shotWith,mcStats,analyzeFull,analyzeFrac,analyzeAny,buildFactDesign,partOptions,findColumns,analyzeTaguchi,runSelfTests,RELEASE,bartlett,chiSqSf,validDistance,tagPredVar,predT,snRatio,snIssue,confTest,leverage,factorialRow,conVal,termColDefs,evalCol,tCrit,designStrength,tagBalanceText,taguchiOptimum,searchFact,predictFull,tagDesign,factDesign,resetDesigns,VK,AK,fullParams,digitsOf,ARRAYS,makeRng,setRng:(r)=>{rng=r;},settingFor,levelMeansOf,termEffectAt};
+</script>
+</body>
+</html>
